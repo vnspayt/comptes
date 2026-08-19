@@ -6,6 +6,7 @@
 <title>Le Carnet — mes comptes</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
   :root{
     --paper:#FBF7F4;
@@ -255,13 +256,17 @@
   <!-- IMPORT -->
   <section class="panel" id="panel-import">
     <h2 class="panel-title">Importer un relevé</h2>
-    <p class="panel-hint">Dépose un export CSV de ta banque, ou colle son contenu directement. La catégorisation se fait automatiquement à l'import, à partir des règles définies dans l'onglet « Règles ».</p>
+    <p class="panel-hint">Dépose un export CSV de ta banque, ou directement le PDF de ton relevé — il est lu automatiquement page par page. La catégorisation se fait ensuite toute seule, à partir des règles définies dans l'onglet « Règles ».</p>
 
     <div class="dropzone" id="dropzone">
       <div class="icon">📄</div>
-      <div class="main">Glisse ton fichier CSV ici, ou clique pour le choisir</div>
-      <div class="aux">.csv — export de relevé bancaire</div>
-      <input type="file" id="fileInput" accept=".csv,text/csv,.txt">
+      <div class="main">Glisse ton relevé ici (CSV ou PDF), ou clique pour le choisir</div>
+      <div class="aux">.csv ou .pdf — export ou copie de ton relevé bancaire</div>
+      <input type="file" id="fileInput" accept=".csv,text/csv,.txt,.pdf,application/pdf">
+    </div>
+
+    <div class="receipt-analyzing" id="pdfAnalyzing" style="display:none;">
+      <div class="spinner"></div> <span id="pdfProgressText">Lecture du PDF en cours…</span>
     </div>
 
     <details style="margin-top:10px;">
@@ -675,6 +680,105 @@
     document.getElementById("fileInput").value = "";
     document.getElementById("pasteArea").value = "";
     setImportStatus("", false);
+  }
+
+  // ---------- PDF statement reading ----------
+  function isPdfFile(file){
+    return file.type === "application/pdf" || /\.pdf$/i.test(file.name||"");
+  }
+  function showPdfProgress(text){
+    document.getElementById("pdfAnalyzing").style.display = "flex";
+    document.getElementById("pdfProgressText").textContent = text;
+  }
+  function hidePdfProgress(){
+    document.getElementById("pdfAnalyzing").style.display = "none";
+  }
+
+  async function analyzeStatementPage(base64){
+    const prompt = `Tu lis une page d'un releve de compte bancaire francais (image). Extrait toutes les lignes d'operations visibles sur cette page uniquement.
+Reponds UNIQUEMENT avec du texte CSV brut (pas de markdown, pas de commentaire, pas de phrase d'introduction), separateur point-virgule, une ligne d'en-tete puis une ligne par operation:
+Date;Libelle;Montant
+Regles:
+- Date au format JJ/MM/AAAA
+- Libelle: le texte de l'operation, sans guillemets et sans point-virgule dedans
+- Montant: nombre avec virgule decimale francaise, negatif pour un debit/depense, positif pour un credit/recette (exemple: -42,10 ou 1500,00)
+- Une ligne par operation, dans l'ordre ou elles apparaissent sur la page
+- Si cette page ne contient pas de tableau d'operations (page de garde, conditions generales, recapitulatif sans detail...), reponds uniquement avec l'en-tete "Date;Libelle;Montant" et aucune ligne en dessous
+- N'invente jamais une operation ou un montant que tu ne peux pas lire clairement`;
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({
+        model:"claude-sonnet-4-6",
+        max_tokens:1000,
+        messages:[{ role:"user", content:[
+          { type:"image", source:{ type:"base64", media_type:"image/jpeg", data: base64 } },
+          { type:"text", text: prompt }
+        ]}]
+      })
+    });
+    if(!resp.ok) throw new Error("Erreur API "+resp.status);
+    const data = await resp.json();
+    const textBlock = (data.content||[]).find(b=>b.type==="text");
+    if(!textBlock) throw new Error("Reponse sans texte");
+    return textBlock.text.trim().replace(/^```csv/i,"").replace(/^```/,"").replace(/```$/,"").trim();
+  }
+
+  async function handlePdfFile(file){
+    document.getElementById("mappingZone").style.display = "none";
+    showPdfProgress("Chargement du PDF…");
+    try{
+      if(typeof pdfjsLib !== "undefined" && !pdfjsLib.GlobalWorkerOptions.workerSrc){
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      }
+      const buf = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+      let headerLine = "Date;Libelle;Montant";
+      let combinedLines = [];
+      let pagesFailed = 0;
+
+      for(let p=1; p<=pdf.numPages; p++){
+        showPdfProgress(`Lecture de la page ${p} / ${pdf.numPages}…`);
+        const page = await pdf.getPage(p);
+        const viewport = page.getViewport({ scale: 2.0 });
+        const canvas = document.createElement("canvas");
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.78);
+        const base64 = dataUrlToBase64(dataUrl);
+        try{
+          const csvText = await analyzeStatementPage(base64);
+          const lines = csvText.split(/\r\n|\n|\r/).map(l=>l.trim()).filter(l=>l.length>0);
+          if(lines.length>0){
+            headerLine = lines[0];
+            combinedLines = combinedLines.concat(lines.slice(1));
+          }
+        }catch(pageErr){
+          console.error("Erreur page "+p, pageErr);
+          pagesFailed++;
+        }
+      }
+
+      hidePdfProgress();
+
+      if(combinedLines.length===0){
+        setImportStatus(pagesFailed>0
+          ? "Le PDF n'a pas pu être lu correctement. Réessaie, ou exporte plutôt un CSV depuis l'espace client de ta banque."
+          : "Aucune opération n'a été trouvée dans ce PDF — vérifie qu'il contient bien un tableau d'opérations détaillé.", true);
+        return;
+      }
+
+      const fullText = headerLine + "\n" + combinedLines.join("\n");
+      handleParsed(fullText);
+      let msg = `${combinedLines.length} ligne(s) lue(s) dans le PDF (${pdf.numPages} page${pdf.numPages>1?"s":""}). Vérifie la correspondance des colonnes ci-dessous puis importe.`;
+      if(pagesFailed>0) msg += ` (${pagesFailed} page(s) n'ont pas pu être lues.)`;
+      setImportStatus(msg, false);
+    }catch(e){
+      console.error(e);
+      hidePdfProgress();
+      setImportStatus("Impossible de lire ce PDF. Réessaie, ou exporte plutôt un CSV depuis ta banque.", true);
+    }
   }
 
   // ---------- dashboard (month by month) ----------
@@ -1189,11 +1293,12 @@ Choisis la categorie la plus pertinente pour le magasin et pour chaque article, 
 
     const dropzone = document.getElementById("dropzone");
     const fileInput = document.getElementById("fileInput");
+    const routeFile = f => { if(!f) return; isPdfFile(f) ? handlePdfFile(f) : handleFile(f); };
     dropzone.addEventListener("click", ()=>fileInput.click());
-    fileInput.addEventListener("change", e=>{ if(e.target.files[0]) handleFile(e.target.files[0]); });
+    fileInput.addEventListener("change", e=>routeFile(e.target.files[0]));
     ["dragenter","dragover"].forEach(ev=>dropzone.addEventListener(ev, e=>{ e.preventDefault(); dropzone.classList.add("drag"); }));
     ["dragleave","drop"].forEach(ev=>dropzone.addEventListener(ev, e=>{ e.preventDefault(); dropzone.classList.remove("drag"); }));
-    dropzone.addEventListener("drop", e=>{ const f=e.dataTransfer.files[0]; if(f) handleFile(f); });
+    dropzone.addEventListener("drop", e=>{ e.preventDefault(); routeFile(e.dataTransfer.files[0]); });
 
     document.getElementById("parsePasteBtn").addEventListener("click", ()=>{
       const txt = document.getElementById("pasteArea").value;
