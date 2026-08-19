@@ -148,12 +148,21 @@
   .filter-row .grow{ flex:1; }
 
   .bar-list{ display:flex; flex-direction:column; gap:12px; }
-  .bar-row{ display:grid; grid-template-columns:160px 1fr 90px; align-items:center; gap:12px; }
+  .bar-row{ display:grid; grid-template-columns:160px 1fr 90px; align-items:center; gap:12px; cursor:pointer; border-radius:8px; padding:3px 6px; margin:-3px -6px; transition:background .12s ease; }
+  .bar-row:hover{ background:var(--paper); }
   .bar-row .cat-name{ font-size:13px; font-weight:600; display:flex; align-items:center; gap:7px; }
   .cat-dot{ width:9px; height:9px; border-radius:50%; display:inline-block; flex:none; }
   .bar-track{ height:14px; background:var(--paper-2); border-radius:8px; overflow:hidden; }
   .bar-fill{ height:100%; border-radius:8px 4px 4px 8px; }
   .bar-row .cat-amount{ font-family:'IBM Plex Mono', monospace; font-size:12.5px; text-align:right; color:var(--ink-soft); }
+
+  .dash-chart-row{ display:flex; gap:32px; align-items:flex-start; flex-wrap:wrap; margin-bottom:6px; }
+  .pie-wrap{ flex:none; display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .pie-wrap svg{ display:block; }
+  .pie-slice{ cursor:pointer; transition:opacity .12s ease; }
+  .pie-slice:hover{ opacity:.8; }
+  .pie-caption{ font-size:11px; color:var(--ink-soft); text-align:center; }
+  .dash-bars{ flex:1; min-width:240px; }
 
   .empty-state{ text-align:center; padding:50px 20px; color:var(--ink-soft); }
   .empty-state .glyph{ font-size:30px; margin-bottom:10px; }
@@ -196,10 +205,15 @@
   .rf-row label{ display:block; font-size:11px; font-weight:600; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.03em; margin-bottom:4px; }
   .rf-row input, .rf-row select{ width:100%; border:1px solid var(--line); border-radius:8px; padding:8px 10px; font-size:13px; }
 
-  .item-row{ display:grid; grid-template-columns:24px 1fr 90px 150px 30px; gap:8px; align-items:center; padding:6px 0; border-bottom:1px solid var(--line); }
+  .item-row{ display:grid; grid-template-columns:24px 1fr 90px 150px 30px; gap:8px; align-items:start; padding:6px 0; border-bottom:1px solid var(--line); }
+  .item-row input[type=checkbox]{ margin-top:8px; }
   .item-row input[type=text], .item-row input[type=number]{ border:1px solid var(--line); border-radius:7px; padding:5px 8px; font-size:12.5px; width:100%; }
   .item-row select{ font-size:12px; padding:5px 6px; }
-  .item-row .rm-item{ border:none; background:none; color:var(--peach-text); cursor:pointer; font-size:14px; }
+  .item-row .rm-item{ border:none; background:none; color:var(--peach-text); cursor:pointer; font-size:14px; margin-top:2px; }
+  .item-tag{ font-size:10.5px; font-weight:600; padding:3px 8px; border-radius:10px; cursor:pointer; white-space:nowrap; flex:none; }
+  .item-tag.essentiel{ background:var(--mint); color:var(--mint-text); }
+  .item-tag.optimisable{ background:var(--butter); color:var(--butter-text); }
+  .item-note{ font-size:11.5px; color:var(--butter-text); font-style:italic; margin-top:4px; line-height:1.4; }
 
   .receipt-gallery{ display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:14px; margin-top:16px; }
   .receipt-card{ border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--paper); cursor:pointer; }
@@ -290,9 +304,9 @@
 
     <div class="dropzone" id="receiptDropzone">
       <div class="icon">🧾</div>
-      <div class="main">Prends une photo ou choisis une image de ticket</div>
-      <div class="aux">jpg, png — analysé automatiquement</div>
-      <input type="file" id="receiptInput" accept="image/*" capture="environment">
+      <div class="main">Prends une photo, ou choisis une image ou un PDF de ticket</div>
+      <div class="aux">jpg, png, pdf — analysé automatiquement</div>
+      <input type="file" id="receiptInput" accept="image/*,.pdf,application/pdf">
     </div>
 
     <div class="receipt-analyzing" id="receiptAnalyzing" style="display:none;">
@@ -301,7 +315,7 @@
 
     <div id="receiptReviewZone" style="display:none; margin-top:20px;">
       <div class="receipt-review-grid">
-        <img id="receiptThumb" alt="Ticket">
+        <div id="receiptThumbWrap"></div>
         <div class="receipt-fields">
           <div class="rf-row">
             <div><label>Magasin</label><input type="text" id="rfStore"></div>
@@ -327,6 +341,10 @@
 
     <h2 class="panel-title" style="font-size:16px; margin-top:32px;">Mes tickets enregistrés</h2>
     <div class="receipt-gallery" id="receiptGallery"></div>
+
+    <h2 class="panel-title" style="font-size:16px; margin-top:32px;">💡 Pistes d'économies</h2>
+    <p class="panel-hint">Articles repérés comme « optimisables » dans tes tickets analysés — des achats où une alternative moins chère ou plus saine existe probablement.</p>
+    <div id="optimisationZone"></div>
   </section>
 
   <!-- DASHBOARD -->
@@ -385,7 +403,7 @@
 (function(){
   "use strict";
 
-  const CATEGORY_COLORS = ["#D3C2EC","#A9D9C5","#F5C2A8","#B7D9EC","#F5E3A8","#F3C9D6","#C9E4B5","#E8C6E0","#B8CFE0","#F0D9B5","#C7B8E8","#A8D8D8","#E3B8B8","#CFE0A8","#D8C7E8"];
+  const CATEGORY_COLORS = ["#D3C2EC","#A9D9C5","#F5C2A8","#B7D9EC","#F5E3A8","#F3C9D6","#C9E4B5","#E8C6E0","#B8CFE0","#F0D9B5","#C7B8E8","#A8D8D8","#E3B8B8","#CFE0A8","#D8C7E8","#F6C9A8","#A8C9E8","#D9C2A8"];
 
   const DEFAULT_RULES = {
     "Alimentation": ["carrefour","leclerc","intermarche","super u","systeme u","lidl","aldi","casino","monoprix","biocoop","grand frais","boulangerie","boucherie","primeur","franprix","cora","auchan","picard"],
@@ -393,12 +411,15 @@
     "Telecom & internet": ["orange","sfr","bouygues telecom","free mobile","free telecom","red by sfr"],
     "Transport": ["total energies","esso","shell","bp ","sncf","ratp","uber","blablacar","parking","autoroute","peage","station service","garage","citroen"],
     "Sante": ["pharmacie","medecin","docteur","dentiste","mutuelle","hopital","chu","laboratoire","radiologie","kine","osteopathe"],
+    "Hygiene & beaute": ["sephora","marionnaud","nocibe","yves rocher","parapharmacie","institut beaute","coiffeur","coiffure"],
+    "Tabac & vapotage": ["tabac","bureau de tabac","vap ","vapote","e-liquide","eliquide","cigarette electronique"],
     "Abonnements & loisirs": ["netflix","spotify","amazon prime","disney","canal+","cinema","fnac","decathlon","steam","playstation"],
     "Restaurant & sorties": ["restaurant","brasserie","mcdonald","kfc","burger","pizza"],
     "Enfant": ["ecole","creche","cantine","babilou","vetement enfant"],
     "Jardin & animaux": ["jardiland","gamm vert","botanic","animalerie","veterinaire","truffaut"],
     "Mobilier": ["ikea","but ","conforama","maisons du monde","fly ","meubles"],
-    "Deco": ["zara home","hema","centrakor","action ","cultura deco"],
+    "Deco": ["zara home","hema","centrakor","cultura deco"],
+    "Divers / petits achats": ["action ","gifi","stokomani","noz "],
     "Travaux": ["leroy merlin","castorama","brico depot","bricomarche","weldom","point p","gedimat","peinture","materiaux","plombier","electricien","macon","artisan","devis travaux"],
     "Banque & frais": ["cotisation carte","frais de tenue","agios","commission","frais bancaires","assurance emprunteur"],
     "Impots & administration": ["impots","tresor public","dgfip","urssaf","caf "],
@@ -457,6 +478,14 @@
     if(!rules["Mobilier"]) rules["Mobilier"] = DEFAULT_RULES["Mobilier"].slice();
     if(!rules["Deco"]) rules["Deco"] = DEFAULT_RULES["Deco"].slice();
     if(!rules["Travaux"]) rules["Travaux"] = DEFAULT_RULES["Travaux"].slice();
+    if(!rules["Hygiene & beaute"]) rules["Hygiene & beaute"] = DEFAULT_RULES["Hygiene & beaute"].slice();
+    if(!rules["Tabac & vapotage"]) rules["Tabac & vapotage"] = DEFAULT_RULES["Tabac & vapotage"].slice();
+    if(!rules["Divers / petits achats"]) rules["Divers / petits achats"] = DEFAULT_RULES["Divers / petits achats"].slice();
+    // Action sells everything, not just deco — move it out of Deco into the new catch-all category
+    if(rules["Deco"] && rules["Deco"].includes("action ")){
+      rules["Deco"] = rules["Deco"].filter(k=>k!=="action ");
+      if(!rules["Divers / petits achats"].includes("action ")) rules["Divers / petits achats"].push("action ");
+    }
     if(Object.keys(rename).length){
       transactions.forEach(t=>{ if(rename[t.category]) t.category = rename[t.category]; });
     }
@@ -595,6 +624,80 @@
     return CATEGORY_COLORS[idx % CATEGORY_COLORS.length];
   }
 
+  // Rough "who did I pay" grouping from a free-text bank/ticket description — skips generic
+  // card-payment prefixes and picks the first meaningful word as the merchant label.
+  const DESC_SKIP_WORDS = new Set(["cb","prlv","vir","virement","paiement","achat","retrait","abonnement","facture","sepa","carte","ticket","de","du","des","la","le"]);
+  function merchantLabel(desc){
+    const words = (desc||"").trim().split(/\s+/).filter(Boolean);
+    for(const w of words){
+      const norm = normalize(w).replace(/[^a-z0-9]/g,"");
+      if(norm.length>=3 && !DESC_SKIP_WORDS.has(norm)){
+        return w.replace(/[^a-zA-ZÀ-ÿ0-9'\-]/g,"") || "Autre";
+      }
+    }
+    return words[0] || "Autre";
+  }
+
+  function openCategoryDetail(cat, txs){
+    const inCat = txs.filter(t=>t.category===cat && t.amount<0);
+    const total = inCat.reduce((s,t)=>s-t.amount,0);
+    const groups = {};
+    inCat.forEach(t=>{
+      const label = merchantLabel(t.description);
+      groups[label] = (groups[label]||0) + (-t.amount);
+    });
+    const groupEntries = Object.entries(groups).sort((a,b)=>b[1]-a[1]);
+    const maxVal = groupEntries.length ? groupEntries[0][1] : 1;
+    const color = catColor(cat);
+
+    let groupsHtml = groupEntries.map(([label,val])=>{
+      const pct = Math.max(4, Math.round((val/maxVal)*100));
+      return `
+        <div class="bar-row" style="grid-template-columns:130px 1fr 85px;">
+          <div class="cat-name">${escapeHtml(label)}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${color};"></div></div>
+          <div class="cat-amount">${fmt(val)}</div>
+        </div>`;
+    }).join("");
+
+    const rowsHtml = inCat.slice().sort((a,b)=>a.amount-b.amount).map(t=>`
+      <tr><td>${displayDate(t.date)}</td><td>${escapeHtml(t.description)}</td><td class="num-cell amount-neg">${fmt(t.amount)}</td></tr>
+    `).join("");
+
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    overlay.innerHTML = `
+      <div class="modal-box" style="max-width:560px; width:100%; text-align:left;">
+        <button class="modal-close">×</button>
+        <h2 class="panel-title" style="display:flex; align-items:center; gap:9px;"><span class="cat-dot" style="background:${color};"></span>${escapeHtml(cat)}</h2>
+        <p class="panel-hint" style="margin-bottom:14px;">${inCat.length} opération${inCat.length>1?"s":""} — total ${fmt(total)}</p>
+        ${groupEntries.length ? `<div class="bar-list" style="margin-bottom:20px;">${groupsHtml}</div>` : ""}
+        <div class="preview-wrap"><table><thead><tr><th>Date</th><th>Libellé</th><th style="text-align:right;">Montant</th></tr></thead><tbody>${rowsHtml || `<tr><td colspan="3" style="text-align:center; padding:20px; color:var(--ink-soft);">Aucune opération.</td></tr>`}</tbody></table></div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", e=>{ if(e.target===overlay) overlay.remove(); });
+    overlay.querySelector(".modal-close").addEventListener("click", ()=>overlay.remove());
+  }
+
+  function buildPieSVG(catEntries, total){
+    const cx=100, cy=100, r=92;
+    if(catEntries.length===1){
+      const [cat] = catEntries[0];
+      return `<svg viewBox="0 0 200 200" width="200" height="200"><circle cx="${cx}" cy="${cy}" r="${r}" fill="${catColor(cat)}" class="pie-slice" data-cat="${escapeHtml(cat)}"></circle></svg>`;
+    }
+    let startAngle = -90, paths = "";
+    catEntries.forEach(([cat,val])=>{
+      const angle = (val/total)*360;
+      const endAngle = startAngle+angle;
+      const large = angle>180 ? 1 : 0;
+      const x1 = cx + r*Math.cos(startAngle*Math.PI/180), y1 = cy + r*Math.sin(startAngle*Math.PI/180);
+      const x2 = cx + r*Math.cos(endAngle*Math.PI/180), y2 = cy + r*Math.sin(endAngle*Math.PI/180);
+      paths += `<path d="M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${large} 1 ${x2.toFixed(2)},${y2.toFixed(2)} Z" fill="${catColor(cat)}" class="pie-slice" data-cat="${escapeHtml(cat)}" stroke="#FFFCF6" stroke-width="2"></path>`;
+      startAngle = endAngle;
+    });
+    return `<svg viewBox="0 0 200 200" width="200" height="200">${paths}</svg>`;
+  }
+
   // ---------- tabs ----------
   function switchTab(tab){
     state.tab = tab;
@@ -605,7 +708,7 @@
     if(tab==="dashboard") renderDashboard();
     if(tab==="transactions") renderTransactions();
     if(tab==="rules") renderRules();
-    if(tab==="tickets") renderReceiptGallery();
+    if(tab==="tickets"){ renderReceiptGallery(); renderOptimisationZone(); }
   }
 
   // ---------- import status / progress ----------
@@ -900,6 +1003,7 @@ Regles:
 
     const catEntries = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
     const maxVal = catEntries.length ? catEntries[0][1] : 1;
+    const pieSvg = buildPieSVG(catEntries, expense);
 
     let html = navHtml + `
       <div class="kpi-row">
@@ -908,20 +1012,25 @@ Regles:
         <div class="kpi balance"><div class="label">Solde</div><div class="value">${balance>=0?"+":""}${fmt(balance)}</div></div>
       </div>
       <h2 class="panel-title" style="font-size:15.5px; margin-bottom:14px;">Dépenses par catégorie</h2>
-      <div class="bar-list">`;
+      <div class="dash-chart-row">
+        <div class="pie-wrap">${pieSvg}<div class="pie-caption">clique une part ou une ligne<br>pour voir le détail</div></div>
+        <div class="dash-bars"><div class="bar-list">`;
     catEntries.forEach(([cat,val])=>{
       const pct = Math.max(4, Math.round((val/maxVal)*100));
       const c = catColor(cat);
       html += `
-        <div class="bar-row">
+        <div class="bar-row" data-cat="${escapeHtml(cat)}">
           <div class="cat-name"><span class="cat-dot" style="background:${c};"></span>${escapeHtml(cat)}</div>
           <div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${c};"></div></div>
           <div class="cat-amount">${fmt(val)}</div>
         </div>`;
     });
-    html += `</div>`;
+    html += `</div></div></div>`;
     container.innerHTML = html;
     bindDashboardNav(months);
+    container.querySelectorAll(".bar-row[data-cat], .pie-slice").forEach(el=>{
+      el.addEventListener("click", ()=> openCategoryDetail(el.dataset.cat, txs));
+    });
   }
   function bindDashboardNav(months){
     const prevBtn = document.getElementById("prevMonthBtn");
@@ -1126,21 +1235,25 @@ Regles:
     });
   }
 
-  async function analyzeReceiptImage(base64){
+  function pdfPlaceholderThumb(){
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="220" height="140"><rect width="220" height="140" fill="#F4EEEA"/><text x="50%" y="52%" font-size="42" text-anchor="middle" dominant-baseline="middle">🧾</text><text x="50%" y="80%" font-size="13" fill="#948DA0" text-anchor="middle" font-family="Inter, sans-serif">PDF</text></svg>`;
+    return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+  }
+
+  async function analyzeReceiptContent(contentBlock){
     const categories = Object.keys(state.rules).join(", ");
-    const prompt = `Tu analyses la photo d'un ticket de caisse francais. Reponds UNIQUEMENT avec un objet JSON valide, sans texte autour, sans balises markdown. Structure exacte:
-{"store": "nom du magasin ou null", "date": "YYYY-MM-DD ou null", "total": nombre positif, "category": "une valeur parmi: ${categories}", "items": [{"name": "nom article court", "amount": nombre positif, "category": "une valeur parmi: ${categories}"}]}
-Choisis la categorie la plus pertinente pour le magasin et pour chaque article. Si le ticket contient des meubles, categorise-les en "Mobilier". Si le ticket contient des articles de decoration (cadres, coussins, luminaires, petits objets deco...), categorise-les en "Deco". Si le ticket vient d'un magasin de bricolage ou concerne des travaux de renovation, categorise en "Travaux". Si tu ne peux pas lire les articles un par un, laisse "items" a un tableau vide mais donne quand meme le total. N'invente jamais un montant que tu ne peux pas lire clairement.`;
+    const prompt = `Tu analyses un ticket de caisse francais (image ou PDF). Reponds UNIQUEMENT avec un objet JSON valide, sans texte autour, sans balises markdown. Structure exacte:
+{"store": "nom du magasin ou null", "date": "YYYY-MM-DD ou null", "total": nombre positif, "category": "une valeur parmi: ${categories}", "items": [{"name": "nom article court", "amount": nombre positif, "category": "une valeur parmi: ${categories}", "type": "essentiel ou optimisable", "conseil": "conseil court, uniquement si type=optimisable, sinon chaine vide"}]}
+Choisis la categorie la plus pertinente pour le magasin et pour chaque article. Si le ticket contient des meubles, categorise-les en "Mobilier". Si le ticket contient des articles de decoration (cadres, coussins, luminaires, petits objets deco...), categorise-les en "Deco". Si le ticket vient d'un magasin de bricolage ou concerne des travaux de renovation, categorise en "Travaux". Si le ticket contient des produits d'hygiene ou de beaute (cheveux, cosmetiques...), categorise-les en "Hygiene & beaute". Si le ticket contient du tabac ou du materiel de vapotage/e-liquide, categorise en "Tabac & vapotage".
+Pour chaque article d'alimentation ou d'hygiene, evalue aussi s'il s'agit d'un achat de base necessaire ("essentiel": fruits, legumes, produits frais, produits de base, hygiene courante) ou d'un produit ultra-transforme, une marque premium evitable, ou un produit dont une alternative moins chere ou plus saine existe facilement ("optimisable": biscuits/gateaux industriels, sodas, plats prepares chers, snacks sucres, marques premium sur des produits basiques...). Si "optimisable", donne dans "conseil" une suggestion courte, concrete et bienveillante (une phrase, ex: "Alternative maison possible, moins chere et sans additifs."). Pour les articles hors alimentation/hygiene, mets "type":"essentiel" et "conseil":"".
+Si tu ne peux pas lire les articles un par un, laisse "items" a un tableau vide mais donne quand meme le total. N'invente jamais un montant que tu ne peux pas lire clairement.`;
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body: JSON.stringify({
         model:"claude-sonnet-4-6",
         max_tokens:1000,
-        messages:[{ role:"user", content:[
-          { type:"image", source:{ type:"base64", media_type:"image/jpeg", data: base64 } },
-          { type:"text", text: prompt }
-        ]}]
+        messages:[{ role:"user", content:[ contentBlock, { type:"text", text: prompt } ]}]
       })
     });
     if(!resp.ok) throw new Error("Erreur API "+resp.status);
@@ -1155,33 +1268,46 @@ Choisis la categorie la plus pertinente pour le magasin et pour chaque article. 
     document.getElementById("receiptReviewZone").style.display = "none";
     document.getElementById("receiptAnalyzing").style.display = "flex";
     try{
-      const [fullImg, thumbImg] = await Promise.all([
-        compressImage(file, 1000, 0.65),
-        compressImage(file, 220, 0.55)
-      ]);
-      const base64 = dataUrlToBase64(fullImg);
+      const isPdf = isPdfFile(file);
+      let fullImg, thumbImg, base64;
+      if(isPdf){
+        fullImg = await readFileAsDataURL(file);
+        base64 = dataUrlToBase64(fullImg);
+        thumbImg = pdfPlaceholderThumb();
+      } else {
+        [fullImg, thumbImg] = await Promise.all([
+          compressImage(file, 1000, 0.65),
+          compressImage(file, 220, 0.55)
+        ]);
+        base64 = dataUrlToBase64(fullImg);
+      }
       let extracted;
       try{
-        extracted = await analyzeReceiptImage(base64);
+        const contentBlock = isPdf
+          ? { type:"document", source:{ type:"base64", media_type:"application/pdf", data: base64 } }
+          : { type:"image", source:{ type:"base64", media_type:"image/jpeg", data: base64 } };
+        extracted = await analyzeReceiptContent(contentBlock);
       }catch(err){
         console.error("analyse ticket echouee", err);
         extracted = { store:"", date:null, total:null, category:"Autres", items:[] };
       }
       state.currentReceipt = {
-        fullImage: fullImg, thumbImage: thumbImg,
+        fullImage: fullImg, thumbImage: thumbImg, isPdf,
         store: extracted.store || "",
         date: extracted.date || new Date().toISOString().slice(0,10),
         total: (typeof extracted.total === "number") ? extracted.total : "",
         category: extracted.category && state.rules[extracted.category] !== undefined ? extracted.category : "Autres",
         items: Array.isArray(extracted.items) ? extracted.items.map(it=>({
           name: it.name || "", amount: (typeof it.amount==="number")?it.amount:0,
-          category: it.category && state.rules[it.category]!==undefined ? it.category : "Autres"
+          category: it.category && state.rules[it.category]!==undefined ? it.category : "Autres",
+          optType: it.type === "optimisable" ? "optimisable" : "essentiel",
+          optNote: it.conseil || ""
         })) : []
       };
       renderReceiptReview();
     }catch(e){
       console.error(e);
-      alert("Impossible de lire cette image. Réessaie avec une autre photo.");
+      alert("Impossible de lire ce fichier. Réessaie avec une autre photo ou un autre PDF.");
     }finally{
       document.getElementById("receiptAnalyzing").style.display = "none";
     }
@@ -1190,7 +1316,10 @@ Choisis la categorie la plus pertinente pour le magasin et pour chaque article. 
   function renderReceiptReview(){
     const rc = state.currentReceipt;
     document.getElementById("receiptReviewZone").style.display = "block";
-    document.getElementById("receiptThumb").src = rc.fullImage;
+    const thumbWrap = document.getElementById("receiptThumbWrap");
+    thumbWrap.innerHTML = rc.isPdf
+      ? `<iframe src="${rc.fullImage}" style="width:100%; height:230px; border:1px solid var(--line); border-radius:10px; background:#fff;"></iframe>`
+      : `<img src="${rc.fullImage}" alt="Ticket" style="width:100%; border-radius:10px; border:1px solid var(--line); display:block;">`;
     document.getElementById("rfStore").value = rc.store;
     document.getElementById("rfDate").value = rc.date || "";
     document.getElementById("rfTotal").value = rc.total;
@@ -1209,21 +1338,35 @@ Choisis la categorie la plus pertinente pour le magasin et pour chaque article. 
       return;
     }
     const catOptions = Object.keys(state.rules);
-    wrap.innerHTML = rc.items.map((it,i)=>`
+    wrap.innerHTML = rc.items.map((it,i)=>{
+      const isOpt = it.optType === "optimisable";
+      return `
       <div class="item-row" data-i="${i}">
         <input type="checkbox" class="item-include" data-i="${i}" ${it.include!==false?"checked":""}>
-        <input type="text" class="item-name" data-i="${i}" value="${escapeHtml(it.name)}">
+        <div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <input type="text" class="item-name" data-i="${i}" value="${escapeHtml(it.name)}" style="flex:1;">
+            <span class="item-tag ${isOpt?'optimisable':'essentiel'}" data-i="${i}" title="Cliquer pour changer">${isOpt?'💡 optimisable':'✓ essentiel'}</span>
+          </div>
+          ${isOpt && it.optNote ? `<div class="item-note">${escapeHtml(it.optNote)}</div>` : ""}
+        </div>
         <input type="number" step="0.01" class="item-amount" data-i="${i}" value="${it.amount}">
         <select class="item-cat" data-i="${i}">
           ${catOptions.map(c=>`<option value="${escapeHtml(c)}" ${c===it.category?"selected":""}>${c}</option>`).join("")}
         </select>
         <button class="rm-item" data-i="${i}">×</button>
       </div>
-    `).join("");
+    `;
+    }).join("");
     wrap.querySelectorAll(".item-name").forEach(inp=>inp.addEventListener("input", e=>{ rc.items[e.target.dataset.i].name = e.target.value; }));
     wrap.querySelectorAll(".item-amount").forEach(inp=>inp.addEventListener("input", e=>{ rc.items[e.target.dataset.i].amount = parseFloat(e.target.value)||0; }));
     wrap.querySelectorAll(".item-cat").forEach(sel=>sel.addEventListener("change", e=>{ rc.items[e.target.dataset.i].category = e.target.value; }));
     wrap.querySelectorAll(".item-include").forEach(chk=>chk.addEventListener("change", e=>{ rc.items[e.target.dataset.i].include = e.target.checked; }));
+    wrap.querySelectorAll(".item-tag").forEach(tag=>tag.addEventListener("click", e=>{
+      const it = rc.items[e.target.dataset.i];
+      it.optType = (it.optType==="optimisable") ? "essentiel" : "optimisable";
+      renderItemsList();
+    }));
     wrap.querySelectorAll(".rm-item").forEach(btn=>btn.addEventListener("click", e=>{
       rc.items.splice(parseInt(e.target.dataset.i,10),1);
       renderItemsList();
@@ -1232,7 +1375,7 @@ Choisis la categorie la plus pertinente pour le magasin et pour chaque article. 
 
   function addManualItem(){
     const rc = state.currentReceipt;
-    rc.items.push({ name:"", amount:0, category:"Autres", include:true });
+    rc.items.push({ name:"", amount:0, category:"Autres", include:true, optType:"essentiel", optNote:"" });
     document.getElementById("rfItemize").checked = true;
     renderItemsList();
   }
@@ -1250,6 +1393,8 @@ Choisis la categorie la plus pertinente pour le magasin et pour chaque article. 
       rc.items.filter(it=>it.include!==false && it.amount>0).forEach(it=>{
         const t = { date, description: `${store} — ${it.name||"article"}`, amount: -Math.abs(it.amount), category: it.category, manual:true };
         t.id = hashId(t) + "_" + Math.random().toString(36).slice(2,7);
+        if(it.optType) t.optType = it.optType;
+        if(it.optNote) t.optNote = it.optNote;
         newTx.push(t);
       });
     }
@@ -1276,7 +1421,7 @@ Choisis la categorie la plus pertinente pour le magasin et pour chaque article. 
     const indexEntry = { id: receiptId, store, date, total, category, thumb: rc.thumbImage, createdAt: Date.now() };
     index.unshift(indexEntry);
     await saveReceiptsIndex(index);
-    await saveReceiptFull(receiptId, { id: receiptId, store, date, total, category, items: rc.items, fullImage: rc.fullImage, createdAt: Date.now() });
+    await saveReceiptFull(receiptId, { id: receiptId, store, date, total, category, items: rc.items, fullImage: rc.fullImage, isPdf: !!rc.isPdf, createdAt: Date.now() });
 
     document.getElementById("receiptStatus").textContent = `Ajouté : ${newTx.length} ligne(s) au registre.`;
     document.getElementById("receiptStatus").className = "status-msg ok";
@@ -1316,13 +1461,44 @@ Choisis la categorie la plus pertinente pour le magasin et pour chaque article. 
     });
   }
 
+  function renderOptimisationZone(){
+    const zone = document.getElementById("optimisationZone");
+    const flagged = state.transactions
+      .filter(t=>t.optType==="optimisable")
+      .sort((a,b)=> a.date<b.date?1:-1);
+
+    if(flagged.length===0){
+      zone.innerHTML = `<div class="empty-state"><div class="glyph">✨</div><div class="main">Rien de particulier à optimiser pour l'instant</div>Analyse tes tickets alimentaires pour voir apparaître des pistes ici.</div>`;
+      return;
+    }
+
+    const total = flagged.reduce((s,t)=>s-t.amount,0);
+    let html = `<div class="kpi-row" style="margin-bottom:18px;">
+      <div class="kpi expense"><div class="label">Total repéré comme optimisable</div><div class="value">${fmt(total)}</div></div>
+    </div>`;
+    html += `<div class="preview-wrap"><table><thead><tr><th>Date</th><th>Article</th><th>Suggestion</th><th style="text-align:right;">Montant</th></tr></thead><tbody>`;
+    flagged.forEach(t=>{
+      html += `<tr>
+        <td>${displayDate(t.date)}</td>
+        <td>${escapeHtml(t.description)}</td>
+        <td style="color:var(--butter-text); font-size:12.5px;">${escapeHtml(t.optNote||"")}</td>
+        <td class="num-cell amount-neg">${fmt(t.amount)}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+    zone.innerHTML = html;
+  }
+
   function openReceiptModal(record){
     const overlay = document.createElement("div");
     overlay.className = "modal-overlay";
+    const mediaHtml = record.isPdf
+      ? `<iframe src="${record.fullImage}" style="width:100%; height:70vh; border:1px solid var(--line); border-radius:8px; background:#fff;"></iframe>`
+      : `<img src="${record.fullImage}" alt="${escapeHtml(record.store)}">`;
     overlay.innerHTML = `
       <div class="modal-box">
         <button class="modal-close">×</button>
-        <img src="${record.fullImage}" alt="${escapeHtml(record.store)}">
+        ${mediaHtml}
         <p style="text-align:center; font-size:13px; color:var(--ink-soft); margin-top:10px;">
           ${escapeHtml(record.store)} — ${displayDate(record.date)} — ${record.total?fmt(record.total):""}
         </p>
