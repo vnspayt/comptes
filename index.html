@@ -6,7 +6,6 @@
 <title>Le Carnet — mes comptes</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
   :root{
     --paper:#FBF7F4;
@@ -186,7 +185,6 @@
 
   footer.hint{ text-align:center; font-size:11.5px; color:var(--ink-soft); margin-top:22px; }
 
-  /* Tickets */
   .receipt-analyzing{ display:flex; align-items:center; gap:10px; padding:16px; font-size:13.5px; color:var(--ink-soft); }
   .spinner{ width:16px; height:16px; border-radius:50%; border:2.5px solid var(--paper-2); border-top-color:var(--lavender-text); animation:spin .7s linear infinite; }
   @keyframes spin{ to{ transform:rotate(360deg); } }
@@ -215,18 +213,6 @@
   .modal-box img{ max-width:100%; max-height:76vh; display:block; margin:0 auto; border-radius:8px; }
   .modal-close{ position:absolute; top:10px; right:14px; border:none; background:none; font-size:20px; cursor:pointer; color:var(--ink-soft); }
 
-  /* Travaux */
-  .budget-set-row{ display:flex; align-items:flex-end; gap:10px; margin-bottom:22px; flex-wrap:wrap; }
-  .budget-set-row .field{ display:flex; flex-direction:column; gap:5px; }
-  .budget-set-row label{ font-size:11px; font-weight:600; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.03em; }
-  .budget-set-row input{ border:1px solid var(--line); border-radius:8px; padding:8px 10px; font-size:14px; width:160px; font-family:'IBM Plex Mono', monospace; }
-  .progress-track{ height:22px; background:var(--paper-2); border-radius:11px; overflow:hidden; margin:14px 0 8px; }
-  .progress-fill{ height:100%; border-radius:11px; display:flex; align-items:center; justify-content:flex-end; padding-right:10px; transition:width .3s ease; }
-  .progress-fill span{ font-size:11px; font-weight:700; color:var(--ink); }
-  .travaux-stats{ display:flex; gap:24px; flex-wrap:wrap; margin-bottom:6px; }
-  .travaux-stats div{ font-size:13px; }
-  .travaux-stats .v{ font-family:'IBM Plex Mono', monospace; font-size:18px; display:block; margin-top:2px; }
-
   @media (max-width:640px){
     .bar-row{ grid-template-columns:110px 1fr 70px; }
     .kpi-row{ grid-template-columns:1fr 1fr; }
@@ -248,25 +234,24 @@
     <button data-tab="import" class="active"><span class="num">01</span>Importer</button>
     <button data-tab="tickets"><span class="num">02</span>Tickets</button>
     <button data-tab="dashboard"><span class="num">03</span>Tableau de bord</button>
-    <button data-tab="travaux"><span class="num">04</span>Travaux</button>
-    <button data-tab="transactions"><span class="num">05</span>Transactions</button>
-    <button data-tab="rules"><span class="num">06</span>Règles</button>
+    <button data-tab="transactions"><span class="num">04</span>Transactions</button>
+    <button data-tab="rules"><span class="num">05</span>Règles</button>
   </nav>
 
   <!-- IMPORT -->
   <section class="panel" id="panel-import">
     <h2 class="panel-title">Importer un relevé</h2>
-    <p class="panel-hint">Dépose un export CSV de ta banque, ou directement le PDF de ton relevé — il est lu automatiquement page par page. La catégorisation se fait ensuite toute seule, à partir des règles définies dans l'onglet « Règles ».</p>
+    <p class="panel-hint">Dépose un ou plusieurs relevés — CSV ou PDF, tu peux en sélectionner plusieurs d'un coup. Les PDF sont lus automatiquement. La catégorisation se fait ensuite toute seule, à partir des règles de l'onglet « Règles ».</p>
 
     <div class="dropzone" id="dropzone">
       <div class="icon">📄</div>
-      <div class="main">Glisse ton relevé ici (CSV ou PDF), ou clique pour le choisir</div>
-      <div class="aux">.csv ou .pdf — export ou copie de ton relevé bancaire</div>
-      <input type="file" id="fileInput" accept=".csv,text/csv,.txt,.pdf,application/pdf">
+      <div class="main">Glisse tes relevés ici (un ou plusieurs, CSV ou PDF), ou clique pour les choisir</div>
+      <div class="aux">.csv ou .pdf — sélection multiple possible</div>
+      <input type="file" id="fileInput" accept=".csv,text/csv,.txt,.pdf,application/pdf" multiple>
     </div>
 
-    <div class="receipt-analyzing" id="pdfAnalyzing" style="display:none;">
-      <div class="spinner"></div> <span id="pdfProgressText">Lecture du PDF en cours…</span>
+    <div class="receipt-analyzing" id="importAnalyzing" style="display:none;">
+      <div class="spinner"></div> <span id="importProgressText">Lecture en cours…</span>
     </div>
 
     <details style="margin-top:10px;">
@@ -351,22 +336,6 @@
     <div id="dashboardContent"></div>
   </section>
 
-  <!-- TRAVAUX -->
-  <section class="panel" id="panel-travaux" style="display:none;">
-    <h2 class="panel-title">Budget travaux</h2>
-    <p class="panel-hint">Suivi de l'enveloppe rénovation de la maison — toutes périodes confondues, catégorie « Travaux & rénovation ».</p>
-
-    <div class="budget-set-row">
-      <div class="field">
-        <label>Enveloppe totale prévue (€)</label>
-        <input type="number" id="travauxBudgetInput" min="0" step="50">
-      </div>
-      <button class="btn secondary small" id="saveTravauxBudgetBtn">Enregistrer l'enveloppe</button>
-    </div>
-
-    <div id="travauxSummary"></div>
-  </section>
-
   <!-- TRANSACTIONS -->
   <section class="panel" id="panel-transactions" style="display:none;">
     <h2 class="panel-title">Transactions</h2>
@@ -390,7 +359,7 @@
   <!-- RULES -->
   <section class="panel" id="panel-rules" style="display:none;">
     <h2 class="panel-title">Règles de catégorisation</h2>
-    <p class="panel-hint">Chaque catégorie est associée à des mots-clés. Si le libellé d'une transaction contient un de ces mots, elle est classée automatiquement — sur les imports CSV comme sur les tickets analysés.</p>
+    <p class="panel-hint">Chaque catégorie est associée à des mots-clés. Si le libellé d'une transaction contient un de ces mots, elle est classée automatiquement — sur les imports comme sur les tickets analysés.</p>
 
     <div class="rules-grid" id="rulesGrid"></div>
 
@@ -423,8 +392,9 @@
     "Restaurant & sorties": ["restaurant","brasserie","mcdonald","kfc","burger","pizza"],
     "Enfant": ["ecole","creche","cantine","babilou","vetement enfant"],
     "Jardin & animaux": ["jardiland","gamm vert","botanic","animalerie","veterinaire","truffaut"],
-    "Decoration": ["but ","conforama","ikea","zara home","maisons du monde","hema","centrakor","action ","cultura deco"],
-    "Travaux & renovation": ["leroy merlin","castorama","brico depot","bricomarche","weldom","point p","gedimat","peinture","materiaux","plombier","electricien","macon","artisan","devis travaux"],
+    "Mobilier": ["ikea","but ","conforama","maisons du monde","fly ","meubles"],
+    "Deco": ["zara home","hema","centrakor","action ","cultura deco"],
+    "Travaux": ["leroy merlin","castorama","brico depot","bricomarche","weldom","point p","gedimat","peinture","materiaux","plombier","electricien","macon","artisan","devis travaux"],
     "Banque & frais": ["cotisation carte","frais de tenue","agios","commission","frais bancaires","assurance emprunteur"],
     "Impots & administration": ["impots","tresor public","dgfip","urssaf","caf "],
     "Revenus": ["virement salaire","salaire","caisse d'allocations","vir sepa recu","remboursement"],
@@ -436,8 +406,8 @@
     rules: null,
     parsed: null,
     tab: "import",
-    dashMonth: null,     // "YYYY-MM" or "all"
-    currentReceipt: null // {fullImage, thumbImage, store, date, total, category, items:[...]}
+    dashMonth: null,
+    currentReceipt: null
   };
 
   // ---------- storage helpers ----------
@@ -451,17 +421,42 @@
     try{ await window.storage.set(key, JSON.stringify(value), false); }
     catch(e){ console.error("save failed", key, e); }
   }
-
   async function loadTransactions(){ return loadJSON("transactions", []); }
   async function saveTransactions(){ await saveJSON("transactions", state.transactions); }
-  async function loadRules(){ return loadJSON("rules", JSON.parse(JSON.stringify(DEFAULT_RULES))); }
+  async function loadRules(){ return loadJSON("rules", null); }
   async function saveRules(){ await saveJSON("rules", state.rules); }
-  async function loadTravauxBudget(){ return loadJSON("travauxBudget", 0); }
-  async function saveTravauxBudget(v){ await saveJSON("travauxBudget", v); }
   async function loadReceiptsIndex(){ return loadJSON("receipts_index", []); }
   async function saveReceiptsIndex(idx){ await saveJSON("receipts_index", idx); }
   async function loadReceiptFull(id){ return loadJSON("receipt:"+id, null); }
   async function saveReceiptFull(id, record){ await saveJSON("receipt:"+id, record); }
+
+  // ---------- migration (older versions had "Decoration" / "Travaux & renovation") ----------
+  function migrateRules(rules, transactions){
+    if(!rules) return JSON.parse(JSON.stringify(DEFAULT_RULES));
+    const rename = {};
+    if(rules["Travaux & renovation"] && !rules["Travaux"]){
+      rules["Travaux"] = rules["Travaux & renovation"];
+      rename["Travaux & renovation"] = "Travaux";
+    }
+    delete rules["Travaux & renovation"];
+    if(rules["Decoration"]){
+      const furnitureKw = ["ikea","but ","conforama","maisons du monde"];
+      const old = rules["Decoration"];
+      const stayDeco = old.filter(k=>!furnitureKw.includes(k));
+      const moveMobilier = old.filter(k=>furnitureKw.includes(k));
+      rules["Deco"] = Array.from(new Set([...(rules["Deco"]||[]), ...stayDeco]));
+      rules["Mobilier"] = Array.from(new Set([...(rules["Mobilier"]||[]), ...moveMobilier]));
+      rename["Decoration"] = "Deco";
+      delete rules["Decoration"];
+    }
+    if(!rules["Mobilier"]) rules["Mobilier"] = DEFAULT_RULES["Mobilier"].slice();
+    if(!rules["Deco"]) rules["Deco"] = DEFAULT_RULES["Deco"].slice();
+    if(!rules["Travaux"]) rules["Travaux"] = DEFAULT_RULES["Travaux"].slice();
+    if(Object.keys(rename).length){
+      transactions.forEach(t=>{ if(rename[t.category]) t.category = rename[t.category]; });
+    }
+    return rules;
+  }
 
   // ---------- text / csv utils ----------
   function normalize(s){
@@ -543,6 +538,18 @@
     const r = parseInt(h.substring(0,2),16), g = parseInt(h.substring(2,4),16), b = parseInt(h.substring(4,6),16);
     return `rgba(${r},${g},${b},${alpha})`;
   }
+  function dataUrlToBase64(dataUrl){ return dataUrl.split(",")[1]; }
+  function readFileAsDataURL(file){
+    return new Promise((resolve,reject)=>{
+      const r = new FileReader();
+      r.onload = ()=>resolve(r.result);
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+  }
+  function isPdfFile(file){
+    return file.type === "application/pdf" || /\.pdf$/i.test(file.name||"");
+  }
 
   function categorize(description){
     const norm = normalize(description);
@@ -564,45 +571,41 @@
     if(idx===-1) idx = cats.length;
     return CATEGORY_COLORS[idx % CATEGORY_COLORS.length];
   }
-  function catBadge(cat){
-    const c = catColor(cat);
-    return `<span class="cat-badge" style="background:${hexToRgba(c,0.5)};"><span class="cat-dot" style="background:${c};"></span>${escapeHtml(cat)}</span>`;
-  }
 
   // ---------- tabs ----------
   function switchTab(tab){
     state.tab = tab;
     document.querySelectorAll("nav.tabs button").forEach(b=>b.classList.toggle("active", b.dataset.tab===tab));
-    ["import","tickets","dashboard","travaux","transactions","rules"].forEach(t=>{
+    ["import","tickets","dashboard","transactions","rules"].forEach(t=>{
       document.getElementById("panel-"+t).style.display = (t===tab) ? "block" : "none";
     });
     if(tab==="dashboard") renderDashboard();
     if(tab==="transactions") renderTransactions();
     if(tab==="rules") renderRules();
     if(tab==="tickets") renderReceiptGallery();
-    if(tab==="travaux") renderTravaux();
   }
 
-  // ---------- import flow ----------
-  function handleFile(file){
-    const reader = new FileReader();
-    reader.onload = e => handleParsed(e.target.result);
-    reader.onerror = () => setImportStatus("Impossible de lire ce fichier.", true);
-    reader.readAsText(file, "UTF-8");
-  }
-  function handleParsed(text){
-    const parsed = parseCSV(text);
-    if(!parsed){ setImportStatus("Ce texte ne ressemble pas à un CSV valide.", true); return; }
-    state.parsed = parsed;
-    document.getElementById("mappingZone").style.display = "block";
-    setupMapping();
-    renderPreview();
-    setImportStatus("", false);
-  }
+  // ---------- import status / progress ----------
   function setImportStatus(msg, isErr){
     const el = document.getElementById("importStatus");
     el.textContent = msg;
     el.className = "status-msg " + (msg ? (isErr?"err":"ok") : "");
+  }
+  function showImportProgress(text){
+    document.getElementById("importAnalyzing").style.display = "flex";
+    document.getElementById("importProgressText").textContent = text;
+  }
+  function hideImportProgress(){
+    document.getElementById("importAnalyzing").style.display = "none";
+  }
+
+  function handleParsed(text){
+    const parsed = parseCSV(text);
+    if(!parsed){ setImportStatus("Ce contenu ne ressemble pas à des transactions valides.", true); return; }
+    state.parsed = parsed;
+    document.getElementById("mappingZone").style.display = "block";
+    setupMapping();
+    renderPreview();
   }
   function setupMapping(){
     const { headers } = state.parsed;
@@ -682,28 +685,17 @@
     setImportStatus("", false);
   }
 
-  // ---------- PDF statement reading ----------
-  function isPdfFile(file){
-    return file.type === "application/pdf" || /\.pdf$/i.test(file.name||"");
-  }
-  function showPdfProgress(text){
-    document.getElementById("pdfAnalyzing").style.display = "flex";
-    document.getElementById("pdfProgressText").textContent = text;
-  }
-  function hidePdfProgress(){
-    document.getElementById("pdfAnalyzing").style.display = "none";
-  }
-
-  async function analyzeStatementPage(base64){
-    const prompt = `Tu lis une page d'un releve de compte bancaire francais (image). Extrait toutes les lignes d'operations visibles sur cette page uniquement.
+  // ---------- multi-file import (CSV text and/or PDF via API) ----------
+  async function analyzeStatementPDF(base64){
+    const prompt = `Tu lis un releve de compte bancaire francais en PDF (une ou plusieurs pages). Extrait toutes les lignes d'operations visibles, sur toutes les pages.
 Reponds UNIQUEMENT avec du texte CSV brut (pas de markdown, pas de commentaire, pas de phrase d'introduction), separateur point-virgule, une ligne d'en-tete puis une ligne par operation:
 Date;Libelle;Montant
 Regles:
 - Date au format JJ/MM/AAAA
-- Libelle: le texte de l'operation, sans guillemets et sans point-virgule dedans
+- Libelle: le texte de l'operation, sans guillemets et sans point-virgule dedans, aussi concis que possible
 - Montant: nombre avec virgule decimale francaise, negatif pour un debit/depense, positif pour un credit/recette (exemple: -42,10 ou 1500,00)
-- Une ligne par operation, dans l'ordre ou elles apparaissent sur la page
-- Si cette page ne contient pas de tableau d'operations (page de garde, conditions generales, recapitulatif sans detail...), reponds uniquement avec l'en-tete "Date;Libelle;Montant" et aucune ligne en dessous
+- Une ligne par operation, dans l'ordre ou elles apparaissent
+- Si le document ne contient pas de tableau d'operations, reponds uniquement avec l'en-tete et aucune ligne
 - N'invente jamais une operation ou un montant que tu ne peux pas lire clairement`;
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
       method:"POST",
@@ -712,7 +704,7 @@ Regles:
         model:"claude-sonnet-4-6",
         max_tokens:1000,
         messages:[{ role:"user", content:[
-          { type:"image", source:{ type:"base64", media_type:"image/jpeg", data: base64 } },
+          { type:"document", source:{ type:"base64", media_type:"application/pdf", data: base64 } },
           { type:"text", text: prompt }
         ]}]
       })
@@ -721,70 +713,68 @@ Regles:
     const data = await resp.json();
     const textBlock = (data.content||[]).find(b=>b.type==="text");
     if(!textBlock) throw new Error("Reponse sans texte");
-    return textBlock.text.trim().replace(/^```csv/i,"").replace(/^```/,"").replace(/```$/,"").trim();
+    const truncated = data.stop_reason === "max_tokens";
+    const text = textBlock.text.trim().replace(/^```csv/i,"").replace(/^```/,"").replace(/```$/,"").trim();
+    return { text, truncated };
   }
 
-  async function handlePdfFile(file){
+  async function handleFiles(fileList){
+    const files = Array.from(fileList||[]).filter(Boolean);
+    if(files.length===0) return;
     document.getElementById("mappingZone").style.display = "none";
-    showPdfProgress("Chargement du PDF…");
-    try{
-      if(typeof pdfjsLib !== "undefined" && !pdfjsLib.GlobalWorkerOptions.workerSrc){
-        pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-      }
-      const buf = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-      let headerLine = "Date;Libelle;Montant";
-      let combinedLines = [];
-      let pagesFailed = 0;
+    showImportProgress(files.length>1 ? `Lecture du fichier 1 / ${files.length}…` : "Lecture en cours…");
 
-      for(let p=1; p<=pdf.numPages; p++){
-        showPdfProgress(`Lecture de la page ${p} / ${pdf.numPages}…`);
-        const page = await pdf.getPage(p);
-        const viewport = page.getViewport({ scale: 2.0 });
-        const canvas = document.createElement("canvas");
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        await page.render({ canvasContext: canvas.getContext("2d"), viewport }).promise;
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.78);
-        const base64 = dataUrlToBase64(dataUrl);
-        try{
-          const csvText = await analyzeStatementPage(base64);
-          const lines = csvText.split(/\r\n|\n|\r/).map(l=>l.trim()).filter(l=>l.length>0);
-          if(lines.length>0){
-            headerLine = lines[0];
-            combinedLines = combinedLines.concat(lines.slice(1));
-          }
-        }catch(pageErr){
-          console.error("Erreur page "+p, pageErr);
-          pagesFailed++;
+    let headerCols = null;
+    let combinedLines = [];
+    const failedFiles = [];
+    let truncatedAny = false;
+
+    for(let i=0;i<files.length;i++){
+      const f = files[i];
+      showImportProgress(`Lecture du fichier ${i+1} / ${files.length} — ${f.name}`);
+      try{
+        let rawText;
+        if(isPdfFile(f)){
+          const dataUrl = await readFileAsDataURL(f);
+          const base64 = dataUrlToBase64(dataUrl);
+          const result = await analyzeStatementPDF(base64);
+          rawText = result.text;
+          if(result.truncated) truncatedAny = true;
+        } else {
+          rawText = await f.text();
         }
+        const parsed = parseCSV(rawText);
+        if(!parsed || parsed.rows.length===0) continue;
+        if(!headerCols) headerCols = parsed.headers;
+        parsed.rows.forEach(r => combinedLines.push(r.join(";")));
+      }catch(err){
+        console.error("Erreur fichier "+f.name, err);
+        failedFiles.push(f.name);
       }
-
-      hidePdfProgress();
-
-      if(combinedLines.length===0){
-        setImportStatus(pagesFailed>0
-          ? "Le PDF n'a pas pu être lu correctement. Réessaie, ou exporte plutôt un CSV depuis l'espace client de ta banque."
-          : "Aucune opération n'a été trouvée dans ce PDF — vérifie qu'il contient bien un tableau d'opérations détaillé.", true);
-        return;
-      }
-
-      const fullText = headerLine + "\n" + combinedLines.join("\n");
-      handleParsed(fullText);
-      let msg = `${combinedLines.length} ligne(s) lue(s) dans le PDF (${pdf.numPages} page${pdf.numPages>1?"s":""}). Vérifie la correspondance des colonnes ci-dessous puis importe.`;
-      if(pagesFailed>0) msg += ` (${pagesFailed} page(s) n'ont pas pu être lues.)`;
-      setImportStatus(msg, false);
-    }catch(e){
-      console.error(e);
-      hidePdfProgress();
-      setImportStatus("Impossible de lire ce PDF. Réessaie, ou exporte plutôt un CSV depuis ta banque.", true);
     }
+
+    hideImportProgress();
+
+    if(!headerCols || combinedLines.length===0){
+      setImportStatus(failedFiles.length>0
+        ? `Aucun fichier n'a pu être lu (${failedFiles.join(", ")}). Vérifie le format, ou réessaie.`
+        : "Aucune opération trouvée dans ces fichiers.", true);
+      return;
+    }
+
+    const fullText = headerCols.join(";") + "\n" + combinedLines.join("\n");
+    handleParsed(fullText);
+
+    let msg = `${combinedLines.length} ligne(s) lue(s) depuis ${files.length} fichier${files.length>1?"s":""}.`;
+    if(failedFiles.length>0) msg += ` ${failedFiles.length} fichier(s) illisible(s) : ${failedFiles.join(", ")}.`;
+    if(truncatedAny) msg += ` Un PDF était volumineux et a pu être coupé — vérifie le nombre de lignes ci-dessous, et scinde-le en plusieurs fichiers si besoin.`;
+    setImportStatus(msg, false);
   }
 
   // ---------- dashboard (month by month) ----------
   function getMonths(){
     const set = new Set(state.transactions.map(t=>t.date.slice(0,7)));
-    return Array.from(set).sort(); // ascending
+    return Array.from(set).sort();
   }
   function renderDashboard(){
     const months = getMonths();
@@ -1017,44 +1007,6 @@ Regles:
     renderTransactions();
   }
 
-  // ---------- travaux budget ----------
-  async function renderTravaux(){
-    const budget = await loadTravauxBudget();
-    document.getElementById("travauxBudgetInput").value = budget || "";
-    const cat = "Travaux & renovation";
-    const txs = state.transactions.filter(t=>t.category===cat && t.amount<0).sort((a,b)=> a.date<b.date?1:-1);
-    const spent = txs.reduce((s,t)=>s-t.amount,0);
-    const pct = budget>0 ? Math.min(150, Math.round((spent/budget)*100)) : 0;
-    let barColor = "var(--mint)";
-    if(pct>=100) barColor = "var(--rose)"; else if(pct>=80) barColor = "var(--butter)";
-
-    let html = `<div class="travaux-stats">
-      <div>Dépensé à ce jour<span class="v" style="color:var(--peach-text);">${fmt(spent)}</span></div>
-      ${budget>0 ? `<div>Enveloppe<span class="v">${fmt(budget)}</span></div><div>Restant<span class="v" style="color:${budget-spent>=0?'var(--mint-text)':'var(--peach-text)'};">${fmt(budget-spent)}</span></div>` : ""}
-    </div>`;
-    if(budget>0){
-      html += `<div class="progress-track"><div class="progress-fill" style="width:${Math.min(100,pct)}%; background:${barColor};"><span>${pct}%</span></div></div>`;
-    } else {
-      html += `<p style="font-size:12.5px; color:var(--ink-soft);">Renseigne une enveloppe ci-dessus pour suivre ta progression.</p>`;
-    }
-
-    if(txs.length===0){
-      html += `<div class="empty-state"><div class="glyph">🔨</div><div class="main">Aucune dépense travaux enregistrée</div>Les transactions catégorisées « Travaux & rénovation » (relevés ou tickets Leroy Merlin, Castorama, artisans…) apparaîtront ici.</div>`;
-    } else {
-      html += `<div class="preview-wrap" style="margin-top:20px;"><table><thead><tr><th>Date</th><th>Libellé</th><th style="text-align:right;">Montant</th></tr></thead><tbody>`;
-      txs.forEach(t=>{
-        html += `<tr><td>${displayDate(t.date)}</td><td>${escapeHtml(t.description)}</td><td class="num-cell amount-neg">${fmt(t.amount)}</td></tr>`;
-      });
-      html += `</tbody></table></div>`;
-    }
-    document.getElementById("travauxSummary").innerHTML = html;
-  }
-  async function saveTravauxBudgetHandler(){
-    const v = parseFloat(document.getElementById("travauxBudgetInput").value) || 0;
-    await saveTravauxBudget(v);
-    renderTravaux();
-  }
-
   // ---------- receipts (tickets) ----------
   function compressImage(file, maxDim, quality){
     return new Promise((resolve,reject)=>{
@@ -1076,13 +1028,12 @@ Regles:
       reader.readAsDataURL(file);
     });
   }
-  function dataUrlToBase64(dataUrl){ return dataUrl.split(",")[1]; }
 
   async function analyzeReceiptImage(base64){
     const categories = Object.keys(state.rules).join(", ");
     const prompt = `Tu analyses la photo d'un ticket de caisse francais. Reponds UNIQUEMENT avec un objet JSON valide, sans texte autour, sans balises markdown. Structure exacte:
 {"store": "nom du magasin ou null", "date": "YYYY-MM-DD ou null", "total": nombre positif, "category": "une valeur parmi: ${categories}", "items": [{"name": "nom article court", "amount": nombre positif, "category": "une valeur parmi: ${categories}"}]}
-Choisis la categorie la plus pertinente pour le magasin et pour chaque article, en te basant sur son nom et les articles achetes. Si le ticket contient des articles de decoration ou d'ameublement, categorise-les en "Decoration". Si le ticket vient d'un magasin de bricolage ou concerne des travaux de renovation, categorise en "Travaux & renovation". Si tu ne peux pas lire les articles un par un, laisse "items" a un tableau vide mais donne quand meme le total. N'invente jamais un montant que tu ne peux pas lire clairement.`;
+Choisis la categorie la plus pertinente pour le magasin et pour chaque article. Si le ticket contient des meubles, categorise-les en "Mobilier". Si le ticket contient des articles de decoration (cadres, coussins, luminaires, petits objets deco...), categorise-les en "Deco". Si le ticket vient d'un magasin de bricolage ou concerne des travaux de renovation, categorise en "Travaux". Si tu ne peux pas lire les articles un par un, laisse "items" a un tableau vide mais donne quand meme le total. N'invente jamais un montant que tu ne peux pas lire clairement.`;
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
       method:"POST",
       headers:{"Content-Type":"application/json"},
@@ -1287,18 +1238,19 @@ Choisis la categorie la plus pertinente pour le magasin et pour chaque article, 
   // ---------- init & events ----------
   async function init(){
     state.transactions = await loadTransactions();
-    state.rules = await loadRules();
+    state.rules = migrateRules(await loadRules(), state.transactions);
+    await saveRules();
+    await saveTransactions();
 
     document.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click", ()=>switchTab(b.dataset.tab)));
 
     const dropzone = document.getElementById("dropzone");
     const fileInput = document.getElementById("fileInput");
-    const routeFile = f => { if(!f) return; isPdfFile(f) ? handlePdfFile(f) : handleFile(f); };
     dropzone.addEventListener("click", ()=>fileInput.click());
-    fileInput.addEventListener("change", e=>routeFile(e.target.files[0]));
+    fileInput.addEventListener("change", e=>{ handleFiles(e.target.files); fileInput.value=""; });
     ["dragenter","dragover"].forEach(ev=>dropzone.addEventListener(ev, e=>{ e.preventDefault(); dropzone.classList.add("drag"); }));
     ["dragleave","drop"].forEach(ev=>dropzone.addEventListener(ev, e=>{ e.preventDefault(); dropzone.classList.remove("drag"); }));
-    dropzone.addEventListener("drop", e=>{ e.preventDefault(); routeFile(e.dataTransfer.files[0]); });
+    dropzone.addEventListener("drop", e=>{ e.preventDefault(); handleFiles(e.dataTransfer.files); });
 
     document.getElementById("parsePasteBtn").addEventListener("click", ()=>{
       const txt = document.getElementById("pasteArea").value;
@@ -1311,7 +1263,6 @@ Choisis la categorie la plus pertinente pour le magasin et pour chaque article, 
     document.getElementById("addCatBtn").addEventListener("click", addCategory);
     document.getElementById("newCatInput").addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); addCategory(); } });
     document.getElementById("recategorizeBtn").addEventListener("click", recategorize);
-    document.getElementById("saveTravauxBudgetBtn").addEventListener("click", saveTravauxBudgetHandler);
 
     const receiptDropzone = document.getElementById("receiptDropzone");
     const receiptInput = document.getElementById("receiptInput");
@@ -1319,7 +1270,7 @@ Choisis la categorie la plus pertinente pour le magasin et pour chaque article, 
     receiptInput.addEventListener("change", e=>{ if(e.target.files[0]) handleReceiptFile(e.target.files[0]); });
     ["dragenter","dragover"].forEach(ev=>receiptDropzone.addEventListener(ev, e=>{ e.preventDefault(); receiptDropzone.classList.add("drag"); }));
     ["dragleave","drop"].forEach(ev=>receiptDropzone.addEventListener(ev, e=>{ e.preventDefault(); receiptDropzone.classList.remove("drag"); }));
-    receiptDropzone.addEventListener("drop", e=>{ const f=e.dataTransfer.files[0]; if(f) handleReceiptFile(f); });
+    receiptDropzone.addEventListener("drop", e=>{ e.preventDefault(); const f=e.dataTransfer.files[0]; if(f) handleReceiptFile(f); });
 
     document.getElementById("rfItemize").addEventListener("change", renderItemsList);
     document.getElementById("rfAddItemBtn").addEventListener("click", addManualItem);
