@@ -241,13 +241,13 @@
   <!-- IMPORT -->
   <section class="panel" id="panel-import">
     <h2 class="panel-title">Importer un relevé</h2>
-    <p class="panel-hint">Dépose un ou plusieurs relevés — CSV ou PDF, tu peux en sélectionner plusieurs d'un coup. Les PDF sont lus automatiquement. La catégorisation se fait ensuite toute seule, à partir des règles de l'onglet « Règles ».</p>
+    <p class="panel-hint">Dépose un ou plusieurs relevés — CSV, QIF ou PDF, tu peux en sélectionner plusieurs d'un coup. Le format QIF est le plus fiable, car il évite toute ambiguïté de colonnes ou d'encodage. La catégorisation se fait ensuite toute seule, à partir des règles de l'onglet « Règles ».</p>
 
     <div class="dropzone" id="dropzone">
       <div class="icon">📄</div>
-      <div class="main">Glisse tes relevés ici (un ou plusieurs, CSV ou PDF), ou clique pour les choisir</div>
-      <div class="aux">.csv ou .pdf — sélection multiple possible</div>
-      <input type="file" id="fileInput" accept=".csv,text/csv,.txt,.pdf,application/pdf" multiple>
+      <div class="main">Glisse tes relevés ici (un ou plusieurs), ou clique pour les choisir</div>
+      <div class="aux">.csv, .qif ou .pdf — sélection multiple possible</div>
+      <input type="file" id="fileInput" accept=".csv,text/csv,.txt,.qif,.pdf,application/pdf" multiple>
     </div>
 
     <div class="receipt-analyzing" id="importAnalyzing" style="display:none;">
