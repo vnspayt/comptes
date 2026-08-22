@@ -48,6 +48,16 @@
   header.masthead h1 .brush{ display:inline-block; color:var(--mint-text); font-style:italic; font-weight:500; }
   header.masthead .sub{ font-size:12.5px; color:var(--ink-soft); text-align:right; line-height:1.5; }
 
+  .section-tabs{ display:flex; gap:10px; margin:22px 0 4px; }
+  .section-tabs button{
+    flex:1; font-family:'Fraunces', serif; font-weight:600; font-size:16px;
+    padding:14px 16px; border-radius:14px; border:2px solid var(--line);
+    background:var(--paper); color:var(--ink-soft); cursor:pointer;
+    transition:border-color .15s ease, background .15s ease, color .15s ease;
+  }
+  .section-tabs button:hover{ border-color:var(--lavender); }
+  .section-tabs button.section-active{ border-color:var(--lavender); background:var(--white); color:var(--ink); box-shadow:var(--shadow); }
+
   nav.tabs{ display:flex; gap:2px; margin:18px 0 22px; flex-wrap:wrap; }
   nav.tabs button{
     font-family:'Fraunces', serif; font-size:14.5px; font-weight:600;
@@ -110,6 +120,13 @@
   .num-cell{ font-family:'IBM Plex Mono', monospace; text-align:right; font-variant-numeric:tabular-nums; }
   .amount-neg{ color:var(--peach-text); font-weight:600; }
   .amount-pos{ color:var(--mint-text); font-weight:600; }
+  input.tx-date{ border:1px solid transparent; background:transparent; font-family:'Inter'; font-size:12.5px; color:var(--ink); padding:3px 4px; border-radius:6px; width:120px; }
+  input.tx-date:hover, input.tx-date:focus{ border-color:var(--line); background:var(--white); }
+  input.tx-budgetmonth{ display:block; border:1px solid transparent; background:transparent; font-family:'Inter'; font-size:10.5px; color:var(--ink-soft); padding:2px 4px; border-radius:5px; width:120px; margin-top:2px; }
+  input.tx-budgetmonth:hover, input.tx-budgetmonth:focus{ border-color:var(--line); background:var(--white); }
+  input.tx-budgetmonth.active{ color:var(--lavender-text); font-weight:600; border-color:var(--lavender); background:#F7F1FB; }
+  tr.neutral{ opacity:.55; }
+  tr.neutral .amount-neg, tr.neutral .amount-pos{ text-decoration:line-through; text-decoration-color:var(--ink-soft); }
 
   select, .select-like{
     font-family:'Inter'; font-size:12.5px; padding:7px 9px; border-radius:8px;
@@ -146,6 +163,10 @@
 
   .filter-row{ display:flex; gap:10px; align-items:center; margin-bottom:18px; flex-wrap:wrap; }
   .filter-row .grow{ flex:1; }
+  .budget-set-row{ display:flex; align-items:flex-end; gap:10px; flex-wrap:wrap; }
+  .budget-set-row .field{ display:flex; flex-direction:column; gap:5px; }
+  .budget-set-row label{ font-size:11px; font-weight:600; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.03em; }
+  .budget-set-row input{ border:1px solid var(--line); border-radius:8px; padding:8px 10px; font-size:14px; width:160px; font-family:'IBM Plex Mono', monospace; }
 
   .bar-list{ display:flex; flex-direction:column; gap:12px; }
   .bar-row{ display:grid; grid-template-columns:160px 1fr 90px; align-items:center; gap:12px; cursor:pointer; border-radius:8px; padding:3px 6px; margin:-3px -6px; transition:background .12s ease; }
@@ -214,6 +235,7 @@
   .item-tag.essentiel{ background:var(--mint); color:var(--mint-text); }
   .item-tag.optimisable{ background:var(--butter); color:var(--butter-text); }
   .item-note{ font-size:11.5px; color:var(--butter-text); font-style:italic; margin-top:4px; line-height:1.4; }
+  .dup-warning{ background:var(--rose); color:var(--rose-text); border-radius:9px; padding:10px 14px; font-size:13px; font-weight:600; margin-bottom:16px; }
 
   .receipt-gallery{ display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:14px; margin-top:16px; }
   .receipt-card{ border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--paper); cursor:pointer; }
@@ -244,12 +266,18 @@
     <div class="sub">registre personnel<br>des dépenses & recettes</div>
   </header>
 
+  <div class="section-tabs" id="sectionTabs">
+    <button data-section="comptes" class="section-active">🏦 Comptes</button>
+    <button data-section="tickets">🧾 Tickets</button>
+  </div>
+
   <nav class="tabs" id="tabs">
-    <button data-tab="import" class="active"><span class="num">01</span>Importer</button>
-    <button data-tab="tickets"><span class="num">02</span>Tickets</button>
-    <button data-tab="dashboard"><span class="num">03</span>Tableau de bord</button>
-    <button data-tab="transactions"><span class="num">04</span>Transactions</button>
-    <button data-tab="rules"><span class="num">05</span>Règles</button>
+    <button data-tab="import" data-section="comptes" class="active"><span class="num">01</span>Importer</button>
+    <button data-tab="dashboard" data-section="comptes"><span class="num">02</span>Tableau de bord</button>
+    <button data-tab="transactions" data-section="comptes"><span class="num">03</span>Transactions</button>
+    <button data-tab="rules" data-section="comptes"><span class="num">04</span>Règles</button>
+    <button data-tab="tickets" data-section="tickets"><span class="num">01</span>Tickets</button>
+    <button data-tab="ticketdetail" data-section="tickets"><span class="num">02</span>Détail tickets</button>
   </nav>
 
   <!-- IMPORT -->
@@ -314,6 +342,7 @@
     </div>
 
     <div id="receiptReviewZone" style="display:none; margin-top:20px;">
+      <div id="receiptDuplicateWarning" style="display:none;"></div>
       <div class="receipt-review-grid">
         <div id="receiptThumbWrap"></div>
         <div class="receipt-fields">
@@ -339,6 +368,21 @@
       </div>
     </div>
 
+    <div class="month-nav" style="margin-top:32px; margin-bottom:0;">
+      <button class="btn ghost round" id="ticketsPrevMonthBtn">‹</button>
+      <div class="label" id="ticketsMonthLabel"></div>
+      <button class="btn ghost round" id="ticketsNextMonthBtn">›</button>
+      <button class="btn ghost small toggle-all" id="ticketsToggleAllBtn">Vue globale</button>
+    </div>
+
+    <h2 class="panel-title" style="font-size:16px; margin-top:14px;">Répartition de mes tickets par catégorie</h2>
+    <p class="panel-hint">Où part l'argent dépensé via tes tickets scannés (hors imports de relevé).</p>
+    <div id="ticketsBreakdown"></div>
+
+    <h2 class="panel-title" style="font-size:16px; margin-top:32px;">Détail alimentation</h2>
+    <p class="panel-hint">Viande, féculents, apéro, gâteaux… la répartition fine de tes courses.</p>
+    <div id="foodBreakdown"></div>
+
     <h2 class="panel-title" style="font-size:16px; margin-top:32px;">Mes tickets enregistrés</h2>
     <div class="receipt-gallery" id="receiptGallery"></div>
 
@@ -350,14 +394,32 @@
   <!-- DASHBOARD -->
   <section class="panel" id="panel-dashboard" style="display:none;">
     <h2 class="panel-title">Tableau de bord</h2>
-    <p class="panel-hint">Vue mois par mois de tes dépenses et recettes par catégorie.</p>
+    <p class="panel-hint">Vue mois par mois de tes dépenses et recettes par catégorie. Chaque catégorie déduit automatiquement ses remboursements (ex. CPAM dans Santé) — inutile de cocher « Neutre » pour ça. Le « Solde du mois » n'est pas ton solde bancaire réel — configure un solde de référence ci-dessous pour avoir une estimation de ton compte.</p>
+
+    <details style="margin-bottom:18px;">
+      <summary style="cursor:pointer; font-size:12.5px; color:var(--ink-soft);">⚙️ Configurer un solde de référence (pour estimer ton vrai solde de compte)</summary>
+      <div class="budget-set-row" style="margin-top:12px; align-items:flex-end;">
+        <div class="field">
+          <label>Solde connu (€)</label>
+          <input type="number" step="0.01" id="obAmountInput">
+        </div>
+        <div class="field">
+          <label>À cette date</label>
+          <input type="date" id="obDateInput">
+        </div>
+        <button class="btn secondary small" id="obSaveBtn">Enregistrer</button>
+        <span class="status-msg" id="obStatus" style="margin-left:10px;"></span>
+      </div>
+      <p style="font-size:11.5px; color:var(--ink-soft); margin-top:8px;">Renseigne le solde exact de ton compte à une date précise (regarde ton relevé bancaire) — l'appli calculera ensuite ton solde réel estimé en ajoutant toutes tes transactions non-neutres depuis cette date.</p>
+    </details>
+
     <div id="dashboardContent"></div>
   </section>
 
   <!-- TRANSACTIONS -->
   <section class="panel" id="panel-transactions" style="display:none;">
     <h2 class="panel-title">Transactions</h2>
-    <p class="panel-hint">Toutes tes opérations, relevés comme tickets confondus. Change la catégorie d'une ligne directement dans le tableau.</p>
+    <p class="panel-hint">Les opérations issues de tes relevés (CSV, QIF, PDF). Le détail de tes tickets de caisse est dans son propre onglet. Change la catégorie d'une ligne directement dans le tableau.</p>
 
     <div class="filter-row">
       <input class="search-input grow" id="txSearch" placeholder="Rechercher un libellé…">
@@ -368,8 +430,27 @@
 
     <div class="preview-wrap">
       <table id="txTable">
-        <thead><tr><th>Date</th><th>Libellé</th><th>Catégorie</th><th style="text-align:right;">Montant</th><th></th></tr></thead>
+        <thead><tr><th>Date</th><th>Libellé</th><th>Catégorie</th><th style="text-align:right;">Montant</th><th title="Pour un virement entre tes propres comptes changeant de catégorie (ex. prêt travaux) — les remboursements dans la même catégorie (ex. CPAM) se déduisent déjà tout seuls, pas besoin de cocher ça pour eux">Neutre</th><th></th></tr></thead>
         <tbody id="txTableBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- DÉTAIL TICKETS -->
+  <section class="panel" id="panel-ticketdetail" style="display:none;">
+    <h2 class="panel-title">Détail des tickets de caisse</h2>
+    <p class="panel-hint">Le détail ligne par ligne de tout ce qui a été ajouté depuis un ticket scanné — séparé de tes transactions bancaires.</p>
+
+    <div class="filter-row">
+      <input class="search-input grow" id="ticketSearch" placeholder="Rechercher un article…">
+      <select id="ticketMonthFilter"></select>
+      <select id="ticketCatFilter"></select>
+    </div>
+
+    <div class="preview-wrap">
+      <table id="ticketDetailTable">
+        <thead><tr><th>Date</th><th>Article</th><th>Catégorie</th><th style="text-align:right;">Montant</th></tr></thead>
+        <tbody id="ticketDetailTableBody"></tbody>
       </table>
     </div>
   </section>
@@ -386,12 +467,30 @@
       <button class="btn secondary small" id="addCatBtn">+ Ajouter une catégorie</button>
     </div>
 
-    <div style="margin-top:20px;">
-      <button class="btn ghost small" id="recategorizeBtn">Ré-appliquer les règles aux transactions non modifiées manuellement</button>
+    <h2 class="panel-title" style="font-size:16px; margin-top:32px;">Sous-catégories alimentaires (pour l'analyse des tickets)</h2>
+    <p class="panel-hint">Ces mots-clés servent à classer précisément les articles alimentaires de tes tickets (viande, féculents, apéro…). Ajoute-en si un article n'est pas reconnu correctement — par exemple une forme de pâtes non listée.</p>
+    <div class="rules-grid" id="foodRulesGrid"></div>
+
+    <div style="margin-top:20px; display:flex; flex-direction:column; gap:10px; align-items:flex-start;">
+      <button class="btn ghost small" id="recategorizeBtn">Ré-appliquer les règles (catégories + rattachement des gros versements tardifs)</button>
+      <button class="btn secondary small" id="aiGuessBtn">🤖 Deviner avec l'IA les transactions non reconnues</button>
+      <span class="status-msg" id="aiGuessStatus" style="margin-left:0;"></span>
+    </div>
+
+    <div style="margin-top:30px; padding-top:18px; border-top:1px solid var(--line);">
+      <button class="btn secondary small" id="exportAllBtn">📤 Exporter toutes les données (diagnostic)</button>
+      <p style="font-size:11.5px; color:var(--ink-soft); margin-top:8px;">Exporte toutes tes transactions (relevés + tickets) avec tous leurs champs — date, catégorie, montant, mois de rattachement, neutre… Utile à envoyer pour un diagnostic précis.</p>
+      <p class="status-msg" id="exportAllStatus" style="margin-left:0; margin-top:6px; display:block;"></p>
     </div>
 
     <div style="margin-top:30px; padding-top:18px; border-top:1px solid var(--line);">
       <button class="btn danger small" id="resetAllBtn">Réinitialiser toutes les données</button>
+      <div id="resetConfirmZone" style="display:none; margin-top:12px; padding:12px 14px; background:var(--rose); border-radius:9px;">
+        <p style="font-size:12.5px; color:var(--rose-text); font-weight:600; margin:0 0 10px;">Cette action efface définitivement toutes les transactions, tickets et règles personnalisées. Confirmer ?</p>
+        <button class="btn danger small" id="resetConfirmBtn">Oui, tout effacer</button>
+        <button class="btn ghost small" id="resetCancelBtn">Annuler</button>
+      </div>
+      <p class="status-msg" id="resetStatus" style="margin-left:0; margin-top:8px; display:block;"></p>
       <p style="font-size:11.5px; color:var(--ink-soft); margin-top:8px;">Efface définitivement toutes les transactions, tous les tickets enregistrés et remet les règles par défaut. Action irréversible.</p>
     </div>
   </section>
@@ -403,36 +502,73 @@
 (function(){
   "use strict";
 
-  const CATEGORY_COLORS = ["#D3C2EC","#A9D9C5","#F5C2A8","#B7D9EC","#F5E3A8","#F3C9D6","#C9E4B5","#E8C6E0","#B8CFE0","#F0D9B5","#C7B8E8","#A8D8D8","#E3B8B8","#CFE0A8","#D8C7E8","#F6C9A8","#A8C9E8","#D9C2A8"];
+  const CATEGORY_COLORS = ["#D3C2EC","#A9D9C5","#F5C2A8","#B7D9EC","#F5E3A8","#F3C9D6","#C9E4B5","#E8C6E0","#B8CFE0","#F0D9B5","#C7B8E8","#A8D8D8","#E3B8B8","#CFE0A8","#D8C7E8","#F6C9A8","#A8C9E8","#D9C2A8","#C2ECD3","#ECC2D9","#C9D9F0","#D3ECC2","#ECD3C2","#C2D3EC"];
 
+  const INCOME_CATEGORIES = new Set(["Revenus","Recettes exceptionnelles"]);
   const DEFAULT_RULES = {
-    "Alimentation": ["carrefour","leclerc","intermarche","super u","systeme u","lidl","aldi","casino","monoprix","biocoop","grand frais","boulangerie","boucherie","primeur","franprix","cora","auchan","picard"],
-    "Logement & charges": ["edf","engie","veolia","suez","loyer","syndic","eau de","assurance habitation","gaz de"],
+    "Alimentation": ["carrefour","leclerc","intermarche","super u","systeme u","lidl","aldi","casino","monoprix","biocoop","grand frais","boulangerie","boucherie","primeur","franprix","cora","auchan","picard","monop","naturalia","leader price","netto","match","cocci market","proxi","vival","spar","g20","boulangeri","aux delices de s","alimentation"],
+    "Logement & charges": ["edf","engie","veolia","suez","loyer","syndic","eau de","assurance habitation","gaz de","sepa assurance","saur"],
+    "Pret immobilier": ["pret immobilier"],
     "Telecom & internet": ["orange","sfr","bouygues telecom","free mobile","free telecom","red by sfr"],
-    "Transport": ["total energies","esso","shell","bp ","sncf","ratp","uber","blablacar","parking","autoroute","peage","station service","garage","citroen"],
-    "Sante": ["pharmacie","medecin","docteur","dentiste","mutuelle","hopital","chu","laboratoire","radiologie","kine","osteopathe"],
+    "Transport": ["total energies","esso","shell","bp ","sncf","ratp","uber","blablacar","parking","autoroute","peage","station service","garage","citroen","cofiroute","vinci autoroutes","aprr","area ","sanef","asf","escota","eurotunnel","navigo","keolis","flixbus","ouigo","trainline","indigo park","q-park","onepark","controle technique","paybyphone","matmut","sapn","flahauto","avia","indigo","sa alis"],
+    "Sante": ["pharmacie","medecin","docteur","dentiste","mutuelle","hopital","chu","laboratoire","radiologie","kine","osteopathe","opticien","optic 2000","afflelou","generale optique","audioprothesiste","pharm","cpam"],
+    "Psychologue & therapie": ["psychologue","psychotherap","psy ","therapeute","seance psy","cabinet psy"],
     "Hygiene & beaute": ["sephora","marionnaud","nocibe","yves rocher","parapharmacie","institut beaute","coiffeur","coiffure"],
     "Tabac & vapotage": ["tabac","bureau de tabac","vap ","vapote","e-liquide","eliquide","cigarette electronique"],
-    "Abonnements & loisirs": ["netflix","spotify","amazon prime","disney","canal+","cinema","fnac","decathlon","steam","playstation"],
-    "Restaurant & sorties": ["restaurant","brasserie","mcdonald","kfc","burger","pizza"],
-    "Enfant": ["ecole","creche","cantine","babilou","vetement enfant"],
-    "Jardin & animaux": ["jardiland","gamm vert","botanic","animalerie","veterinaire","truffaut"],
+    "Abonnements & loisirs": ["netflix","spotify","amazon prime","disney","canal+","cinema","fnac","decathlon","steam","playstation","apple.com/bill","google play","xbox","nintendo eshop","basic fit","salle de sport","anthropic","cafe des images","equita","caen pisc"],
+    "Restaurant & sorties": ["restaurant","brasserie","mcdonald","kfc","burger","pizza","sushi","brioche doree","subway","dominos","o'tacos","moholicious","kebab","tire bouchon"],
+    "Enfant": ["ecole","creche","cantine","babilou","vetement enfant","ptit club","institutionsaintjosep","cache-cache","kiabi","tape a l'oeil","jouet","ec directe st jo","smyths toys"],
+    "Jardin & animaux": ["jardiland","gamm vert","botanic","animalerie","veterinaire","truffaut","clinique vet","vetoophtalmo"],
     "Mobilier": ["ikea","but ","conforama","maisons du monde","fly ","meubles"],
-    "Deco": ["zara home","hema","centrakor","cultura deco"],
-    "Divers / petits achats": ["action ","gifi","stokomani","noz "],
-    "Travaux": ["leroy merlin","castorama","brico depot","bricomarche","weldom","point p","gedimat","peinture","materiaux","plombier","electricien","macon","artisan","devis travaux"],
-    "Banque & frais": ["cotisation carte","frais de tenue","agios","commission","frais bancaires","assurance emprunteur"],
-    "Impots & administration": ["impots","tresor public","dgfip","urssaf","caf "],
-    "Revenus": ["virement salaire","salaire","caisse d'allocations","vir sepa recu","remboursement"],
+    "Deco": ["zara home","hema","centrakor","cultura deco","saint maclou"],
+    "Divers / petits achats": ["action ","gifi","stokomani","noz ","lydia"],
+    "Entretien & menager": [],
+    "Travaux": ["leroy merlin","castorama","brico depot","bricomarche","weldom","point p","gedimat","peinture","materiaux","plombier","electricien","macon","artisan","devis travaux","budget travaux"],
+    "Banque & frais": ["cotisation carte","frais de tenue","agios","commission","frais bancaires","assurance emprunteur","kereis","cotisation mensuelle","caci non life","assurance moyen de paiement"],
+    "Impots & administration": ["impots","tresor public","dgfip","urssaf","caf ","drfip"],
+    "Revenus": ["virement salaire","salaire","caisse d'allocations","vir sepa recu","remboursement","france travail","pole emploi","agence schneider","prime nr","cci region normandie"],
+    "Recettes exceptionnelles": ["economie","avance nr"],
+    "Placement": [],
     "Autres": []
   };
+
+  // Rules that also depend on the amount, not just the description — checked before the plain keyword rules.
+  const BLANK_DESC_PLACEHOLDER = "Opération sans libellé (vérifie ton relevé)";
+  const CONDITIONAL_RULES = [
+    { keywords: ["vanessa payet"], minAmount: 650, category: "Revenus" },
+    // A large transfer out to a personal account (Vanessa's or Nicolas's own account) is money set aside, not real spending.
+    { keywords: ["vanessa payet"], maxAmount: -1500, category: "Placement" },
+    { keywords: ["nicolas roussel"], maxAmount: -1500, category: "Placement" },
+    // Any Octavia-labelled transfer is always savings, whatever the amount — checked before the generic "économie" keyword
+    // so it doesn't get stolen by Recettes exceptionnelles.
+    { keywords: ["octavia"], category: "Placement" }
+  ];
+  const PLACEMENT_SUBCATS = ["Nicolas","Vanessa","Octavia"];
+  function derivePlacementSub(desc){
+    const norm = normalize(desc);
+    if(norm.includes("octavia")) return "Octavia";
+    if(norm.includes("nicolas")) return "Nicolas";
+    if(norm.includes("vanessa")) return "Vanessa";
+    return null;
+  }
+
+  // Some bank exports (this LCL QIF, at least) leave loan installments with zero label at all —
+  // recognized here by their known recurring amount instead.
+  const BLANK_DESC_AMOUNT_RULES = [
+    { amount: -998.45, tolerance: 3, category: "Pret immobilier" },
+    { amount: -34.72, tolerance: 2, category: "Pret immobilier" }
+  ];
 
   let state = {
     transactions: [],
     rules: null,
     parsed: null,
     tab: "import",
+    section: "comptes",
     dashMonth: null,
+    ticketsMonth: null,
+    openingBalance: null,
+    foodKeywords: null,
     currentReceipt: null
   };
 
@@ -452,6 +588,8 @@
   async function loadRules(){ return loadJSON("rules", null); }
   async function saveRules(){ await saveJSON("rules", state.rules); }
   async function loadReceiptsIndex(){ return loadJSON("receipts_index", []); }
+  async function loadOpeningBalance(){ return loadJSON("openingBalance", null); }
+  async function saveOpeningBalance(v){ await saveJSON("openingBalance", v); }
   async function saveReceiptsIndex(idx){ await saveJSON("receipts_index", idx); }
   async function loadReceiptFull(id){ return loadJSON("receipt:"+id, null); }
   async function saveReceiptFull(id, record){ await saveJSON("receipt:"+id, record); }
@@ -481,11 +619,43 @@
     if(!rules["Hygiene & beaute"]) rules["Hygiene & beaute"] = DEFAULT_RULES["Hygiene & beaute"].slice();
     if(!rules["Tabac & vapotage"]) rules["Tabac & vapotage"] = DEFAULT_RULES["Tabac & vapotage"].slice();
     if(!rules["Divers / petits achats"]) rules["Divers / petits achats"] = DEFAULT_RULES["Divers / petits achats"].slice();
+    if(!rules["Recettes exceptionnelles"]) rules["Recettes exceptionnelles"] = [];
+    if(!rules["Entretien & menager"]) rules["Entretien & menager"] = [];
+    if(!rules["Psychologue & therapie"]) rules["Psychologue & therapie"] = DEFAULT_RULES["Psychologue & therapie"].slice();
     // Action sells everything, not just deco — move it out of Deco into the new catch-all category
     if(rules["Deco"] && rules["Deco"].includes("action ")){
       rules["Deco"] = rules["Deco"].filter(k=>k!=="action ");
       if(!rules["Divers / petits achats"].includes("action ")) rules["Divers / petits achats"].push("action ");
     }
+    // Merge in newly-recognized merchant keywords for categories that already existed on this install
+    if(!rules["Pret immobilier"]) rules["Pret immobilier"] = DEFAULT_RULES["Pret immobilier"].slice();
+    const KEYWORD_ADDITIONS = {
+      "Alimentation": ["boulangeri","aux delices de s","alimentation"],
+      "Logement & charges": ["sepa assurance","saur"],
+      "Pret immobilier": ["pret immobilier"],
+      "Transport": ["paybyphone","matmut","sapn","flahauto","avia","indigo","sa alis"],
+      "Sante": ["pharm","cpam"],
+      "Restaurant & sorties": ["moholicious","kebab","tire bouchon"],
+      "Enfant": ["ptit club","institutionsaintjosep","cache-cache","kiabi","tape a l'oeil","jouet","ec directe st jo","smyths toys"],
+      "Jardin & animaux": ["clinique vet","vetoophtalmo"],
+      "Deco": ["saint maclou"],
+      "Divers / petits achats": ["lydia"],
+      "Travaux": ["budget travaux"],
+      "Abonnements & loisirs": ["anthropic","cafe des images","equita","caen pisc"],
+      "Banque & frais": ["kereis","cotisation mensuelle","caci non life","assurance moyen de paiement"],
+      "Impots & administration": ["drfip"],
+      "Revenus": ["agence schneider","prime nr","cci region normandie"],
+      "Recettes exceptionnelles": ["economie","avance nr"],
+      "Placement": ["octavia"]
+    };
+    // Prime NR was initially guessed as an occasional top-up; confirmed to be a real work bonus — move it to Revenus
+    if(rules["Recettes exceptionnelles"] && rules["Recettes exceptionnelles"].includes("prime nr")){
+      rules["Recettes exceptionnelles"] = rules["Recettes exceptionnelles"].filter(k=>k!=="prime nr");
+    }
+    Object.entries(KEYWORD_ADDITIONS).forEach(([cat,kws])=>{
+      if(!rules[cat]) rules[cat] = [];
+      kws.forEach(kw=>{ if(!rules[cat].includes(kw)) rules[cat].push(kw); });
+    });
     if(Object.keys(rename).length){
       transactions.forEach(t=>{ if(rename[t.category]) t.category = rename[t.category]; });
     }
@@ -564,6 +734,40 @@
   }
   function pad(n){ n=n.toString(); return n.length<2 ? "0"+n : n; }
   function displayDate(iso){ if(!iso) return "?"; const [y,m,d]=iso.split("-"); return `${d}/${m}/${y}`; }
+  function effectiveMonth(t){ return t.budgetMonth || t.date.slice(0,7); }
+  // A large income (>= 2900€) landing after the 25th of the month is treated as next month's pay.
+  function autoBudgetMonth(t){
+    if(t.amount < 2900) return null;
+    const day = parseInt(t.date.slice(8,10),10);
+    if(day <= 25) return null;
+    let [y,m] = t.date.slice(0,7).split("-").map(Number);
+    m += 1;
+    if(m>12){ m=1; y+=1; }
+    return `${y}-${pad(m)}`;
+  }
+  // Once a big late salary has shifted to next month, everything spent from that date onward
+  // (same calendar month) is really "living on next month's pay" — cascade the shift to those too.
+  function applyPaydayCascade(transactions){
+    let changed = 0;
+    const byMonth = {};
+    transactions.forEach(t=>{ const m=t.date.slice(0,7); (byMonth[m]=byMonth[m]||[]).push(t); });
+    Object.values(byMonth).forEach(txs=>{
+      const shifted = txs.filter(t=>autoBudgetMonth(t));
+      if(shifted.length===0) return;
+      const cutoffDate = shifted.reduce((min,t)=> t.date<min ? t.date : min, shifted[0].date);
+      const targetMonth = autoBudgetMonth(shifted[0]);
+      txs.forEach(t=>{
+        if(shifted.includes(t)) return;
+        if(t.date < cutoffDate) return;
+        if(t.budgetMonth && t.budgetMonthAuto!==true) return; // respect a manual override
+        if(t.budgetMonth === targetMonth) return;
+        t.budgetMonth = targetMonth;
+        t.budgetMonthAuto = true;
+        changed++;
+      });
+    });
+    return changed;
+  }
   function monthLabel(iso){
     const MOIS=["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
     const [y,m]=iso.split("-");
@@ -603,8 +807,20 @@
     }
   }
 
-  function categorize(description){
+  function categorize(description, amount){
+    if(description === BLANK_DESC_PLACEHOLDER && typeof amount === "number"){
+      for(const rule of BLANK_DESC_AMOUNT_RULES){
+        if(Math.abs(amount - rule.amount) <= rule.tolerance) return rule.category;
+      }
+    }
     const norm = normalize(description);
+    for(const rule of CONDITIONAL_RULES){
+      if(typeof amount !== "number") continue;
+      if(rule.minAmount!==undefined && amount < rule.minAmount) continue;
+      if(rule.maxAmount!==undefined && amount > rule.maxAmount) continue;
+      if(!rule.keywords.every(kw => norm.includes(normalize(kw)))) continue;
+      return rule.category;
+    }
     for(const [cat, kws] of Object.entries(state.rules)){
       for(const kw of kws){
         if(kw && norm.includes(normalize(kw))) return cat;
@@ -616,6 +832,24 @@
     const s = `${t.date}|${normalize(t.description)}|${t.amount.toFixed(2)}`;
     let h=0; for(let i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))|0; }
     return "t"+Math.abs(h)+"_"+s.length;
+  }
+  function hashString(s){
+    let h=0; for(let i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))|0; }
+    return "h"+Math.abs(h)+"_"+s.length;
+  }
+  async function findDuplicateReceipt(imgHash, store, date, total){
+    const index = await loadReceiptsIndex();
+    const exact = index.find(r=>r.imgHash && r.imgHash===imgHash);
+    if(exact) return { type:"exact", entry: exact };
+    if(store && date){
+      const similar = index.find(r =>
+        r.date===date &&
+        normalize(r.store)===normalize(store) &&
+        Math.abs((r.total||0)-(total||0)) < 0.01
+      );
+      if(similar) return { type:"similar", entry: similar };
+    }
+    return null;
   }
   function catColor(cat){
     const cats = Object.keys(state.rules);
@@ -638,11 +872,84 @@
     return words[0] || "Autre";
   }
 
+  function openSavingsDetail(placementTx){
+    const lines = placementTx.slice().sort((a,b)=> a.date<b.date?1:-1);
+    const total = lines.reduce((s,t)=>s-t.amount,0);
+    const bySub = {};
+    lines.forEach(t=>{ const who = t.placementSub || "Non identifié"; bySub[who] = (bySub[who]||0) - t.amount; });
+    const subEntries = Object.entries(bySub).sort((a,b)=>b[1]-a[1]);
+    const maxVal = subEntries.length ? Math.max(1, subEntries[0][1]) : 1;
+
+    const subHtml = subEntries.map(([who,val])=>{
+      const idx = PLACEMENT_SUBCATS.indexOf(who);
+      const color = idx>=0 ? CATEGORY_COLORS[idx % CATEGORY_COLORS.length] : "#C7B8E8";
+      return `
+      <div class="bar-row" style="grid-template-columns:130px 1fr 85px; cursor:default;">
+        <div class="cat-name"><span class="cat-dot" style="background:${color};"></span>${escapeHtml(who)}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.max(4,Math.round((val/maxVal)*100))}%; background:${color};"></div></div>
+        <div class="cat-amount">${fmt(val)}</div>
+      </div>`;
+    }).join("");
+
+    const rowsHtml = lines.map(t=>`
+      <tr><td>${displayDate(t.date)}</td><td>${escapeHtml(t.description)}</td><td>${escapeHtml(t.placementSub||"Non identifié")}</td><td class="num-cell amount-pos">${fmt(-t.amount)}</td></tr>
+    `).join("");
+
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    overlay.innerHTML = `
+      <div class="modal-box" style="max-width:600px; width:100%; text-align:left;">
+        <button class="modal-close">×</button>
+        <h2 class="panel-title">Détail de l'économie</h2>
+        <p class="panel-hint" style="margin-bottom:14px;">${lines.length} versement${lines.length>1?"s":""} mis de côté — total ${fmt(total)}.</p>
+        ${subHtml ? `<div class="bar-list" style="margin-bottom:20px;">${subHtml}</div>` : ""}
+        <div class="preview-wrap"><table><thead><tr><th>Date</th><th>Libellé</th><th>Qui</th><th style="text-align:right;">Montant</th></tr></thead><tbody>${rowsHtml || `<tr><td colspan="4" style="text-align:center; padding:20px; color:var(--ink-soft);">Aucune économie pour l'instant.</td></tr>`}</tbody></table></div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", e=>{ if(e.target===overlay) overlay.remove(); });
+    overlay.querySelector(".modal-close").addEventListener("click", ()=>overlay.remove());
+  }
+
+
+  function openIncomeDetail(txs){
+    const incomeLines = txs.filter(t=>INCOME_CATEGORIES.has(t.category)).sort((a,b)=>b.amount-a.amount);
+    const total = incomeLines.reduce((s,t)=>s+t.amount,0);
+    const byCat = {};
+    incomeLines.forEach(t=>{ byCat[t.category] = (byCat[t.category]||0) + t.amount; });
+
+    const catHtml = Object.entries(byCat).map(([cat,val])=>`
+      <div class="bar-row" style="grid-template-columns:170px 1fr 85px; cursor:default;">
+        <div class="cat-name"><span class="cat-dot" style="background:${catColor(cat)};"></span>${escapeHtml(cat)}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${Math.max(4,Math.round((val/total)*100))}%; background:${catColor(cat)};"></div></div>
+        <div class="cat-amount">${fmt(val)}</div>
+      </div>`).join("");
+
+    const rowsHtml = incomeLines.map(t=>`
+      <tr><td>${displayDate(t.date)}</td><td>${escapeHtml(t.description)}</td><td>${escapeHtml(t.category)}</td><td class="num-cell amount-pos">+${fmt(t.amount)}</td></tr>
+    `).join("");
+
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    overlay.innerHTML = `
+      <div class="modal-box" style="max-width:600px; width:100%; text-align:left;">
+        <button class="modal-close">×</button>
+        <h2 class="panel-title">Détail des recettes</h2>
+        <p class="panel-hint" style="margin-bottom:14px;">${incomeLines.length} opération${incomeLines.length>1?"s":""} comptée${incomeLines.length>1?"s":""} en recette — total ${fmt(total)}. Seules les catégories « Revenus » et « Recettes exceptionnelles » sont comptées ici ; vérifie qu'aucune ligne n'y figure par erreur (un virement interne mal catégorisé, par exemple).</p>
+        ${catHtml ? `<div class="bar-list" style="margin-bottom:20px;">${catHtml}</div>` : ""}
+        <div class="preview-wrap"><table><thead><tr><th>Date</th><th>Libellé</th><th>Catégorie</th><th style="text-align:right;">Montant</th></tr></thead><tbody>${rowsHtml || `<tr><td colspan="4" style="text-align:center; padding:20px; color:var(--ink-soft);">Aucune recette.</td></tr>`}</tbody></table></div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener("click", e=>{ if(e.target===overlay) overlay.remove(); });
+    overlay.querySelector(".modal-close").addEventListener("click", ()=>overlay.remove());
+  }
+
   function openCategoryDetail(cat, txs){
-    const inCat = txs.filter(t=>t.category===cat && t.amount<0);
-    const total = inCat.reduce((s,t)=>s-t.amount,0);
+    const inCatAll = txs.filter(t=>t.category===cat && !t.neutral);
+    const expenseLines = inCatAll.filter(t=>t.amount<0);
+    const creditLines = inCatAll.filter(t=>t.amount>0);
+    const netTotal = inCatAll.reduce((s,t)=>s+t.amount, 0);
     const groups = {};
-    inCat.forEach(t=>{
+    expenseLines.forEach(t=>{
       const label = merchantLabel(t.description);
       groups[label] = (groups[label]||0) + (-t.amount);
     });
@@ -660,8 +967,18 @@
         </div>`;
     }).join("");
 
-    const rowsHtml = inCat.slice().sort((a,b)=>a.amount-b.amount).map(t=>`
-      <tr><td>${displayDate(t.date)}</td><td>${escapeHtml(t.description)}</td><td class="num-cell amount-neg">${fmt(t.amount)}</td></tr>
+    let creditsHtml = "";
+    if(creditLines.length>0){
+      const creditTotal = creditLines.reduce((s,t)=>s+t.amount,0);
+      creditsHtml = `
+        <p style="font-size:12.5px; font-weight:600; color:var(--mint-text); margin:0 0 8px;">💶 Remboursements / rentrées dans cette catégorie — ${fmt(creditTotal)}</p>
+        <div class="preview-wrap" style="margin-bottom:20px;"><table><tbody>
+          ${creditLines.map(t=>`<tr><td>${displayDate(t.date)}</td><td>${escapeHtml(t.description)}</td><td class="num-cell amount-pos">${fmt(t.amount)}</td></tr>`).join("")}
+        </tbody></table></div>`;
+    }
+
+    const rowsHtml = inCatAll.slice().sort((a,b)=>a.date<b.date?1:-1).map(t=>`
+      <tr><td>${displayDate(t.date)}</td><td>${escapeHtml(t.description)}</td><td class="num-cell ${t.amount<0?'amount-neg':'amount-pos'}">${t.amount>=0?"+":""}${fmt(t.amount)}</td></tr>
     `).join("");
 
     const overlay = document.createElement("div");
@@ -670,8 +987,9 @@
       <div class="modal-box" style="max-width:560px; width:100%; text-align:left;">
         <button class="modal-close">×</button>
         <h2 class="panel-title" style="display:flex; align-items:center; gap:9px;"><span class="cat-dot" style="background:${color};"></span>${escapeHtml(cat)}</h2>
-        <p class="panel-hint" style="margin-bottom:14px;">${inCat.length} opération${inCat.length>1?"s":""} — total ${fmt(total)}</p>
+        <p class="panel-hint" style="margin-bottom:14px;">${inCatAll.length} opération${inCatAll.length>1?"s":""} — net ${fmt(-netTotal)}${creditLines.length>0?" (après remboursements)":""}</p>
         ${groupEntries.length ? `<div class="bar-list" style="margin-bottom:20px;">${groupsHtml}</div>` : ""}
+        ${creditsHtml}
         <div class="preview-wrap"><table><thead><tr><th>Date</th><th>Libellé</th><th style="text-align:right;">Montant</th></tr></thead><tbody>${rowsHtml || `<tr><td colspan="3" style="text-align:center; padding:20px; color:var(--ink-soft);">Aucune opération.</td></tr>`}</tbody></table></div>
       </div>`;
     document.body.appendChild(overlay);
@@ -686,8 +1004,10 @@
       return `<svg viewBox="0 0 200 200" width="200" height="200"><circle cx="${cx}" cy="${cy}" r="${r}" fill="${catColor(cat)}" class="pie-slice" data-cat="${escapeHtml(cat)}"></circle></svg>`;
     }
     let startAngle = -90, paths = "";
+    const safeTotal = total>0 ? total : catEntries.length;
     catEntries.forEach(([cat,val])=>{
-      const angle = (val/total)*360;
+      const share = total>0 ? val : 1;
+      const angle = (share/safeTotal)*360;
       const endAngle = startAngle+angle;
       const large = angle>180 ? 1 : 0;
       const x1 = cx + r*Math.cos(startAngle*Math.PI/180), y1 = cy + r*Math.sin(startAngle*Math.PI/180);
@@ -699,16 +1019,32 @@
   }
 
   // ---------- tabs ----------
+  const TAB_SECTION = { import:"comptes", dashboard:"comptes", transactions:"comptes", rules:"comptes", tickets:"tickets", ticketdetail:"tickets" };
+
+  function switchSection(section){
+    state.section = section;
+    document.querySelectorAll(".section-tabs button").forEach(b=>b.classList.toggle("section-active", b.dataset.section===section));
+    document.querySelectorAll("nav.tabs button").forEach(b=>{
+      b.style.display = (b.dataset.section===section) ? "" : "none";
+    });
+    if(TAB_SECTION[state.tab] !== section){
+      const firstTab = Array.from(document.querySelectorAll("nav.tabs button")).find(b=>b.dataset.section===section);
+      if(firstTab) switchTab(firstTab.dataset.tab);
+    }
+  }
+
   function switchTab(tab){
     state.tab = tab;
+    if(TAB_SECTION[tab] && TAB_SECTION[tab] !== state.section) switchSection(TAB_SECTION[tab]);
     document.querySelectorAll("nav.tabs button").forEach(b=>b.classList.toggle("active", b.dataset.tab===tab));
-    ["import","tickets","dashboard","transactions","rules"].forEach(t=>{
+    ["import","tickets","ticketdetail","dashboard","transactions","rules"].forEach(t=>{
       document.getElementById("panel-"+t).style.display = (t===tab) ? "block" : "none";
     });
     if(tab==="dashboard") renderDashboard();
     if(tab==="transactions") renderTransactions();
-    if(tab==="rules") renderRules();
-    if(tab==="tickets"){ renderReceiptGallery(); renderOptimisationZone(); }
+    if(tab==="ticketdetail") renderTicketDetail();
+    if(tab==="rules"){ renderRules(); renderFoodRules(); }
+    if(tab==="tickets"){ renderReceiptGallery(); renderOptimisationZone(); refreshTicketAnalysis(); }
   }
 
   // ---------- import status / progress ----------
@@ -773,29 +1109,44 @@
     const debitIdx= twoCol ? parseInt(document.getElementById("mapDebit").value,10) : -1;
     const creditIdx= twoCol ? parseInt(document.getElementById("mapCredit").value,10) : -1;
 
-    const existingIds = new Set(state.transactions.map(t=>t.id));
+    const existingKeys = new Set(state.transactions.map(t=>t.dedupeKey || t.id));
+    const batchOccurrence = {};
     let added=0, skipped=0, invalid=0;
     const newOnes=[];
     rows.forEach(r=>{
       const iso = parseDateToISO(r[dateIdx]);
-      const desc = (r[descIdx]||"").trim();
+      let desc = (r[descIdx]||"").trim();
       let amount;
       if(twoCol){
         const d=parseAmount(r[debitIdx]), c=parseAmount(r[creditIdx]);
         amount = (isNaN(c)?0:Math.abs(c)) - (isNaN(d)?0:Math.abs(d));
       } else amount = parseAmount(r[amountIdx]);
-      if(!iso || !desc || isNaN(amount)){ invalid++; return; }
+      if(!iso || isNaN(amount)){ invalid++; return; }
+      if(!desc) desc = BLANK_DESC_PLACEHOLDER;
       const t = { date: iso, description: desc, amount };
-      t.id = hashId(t);
-      if(existingIds.has(t.id)){ skipped++; return; }
-      t.category = categorize(desc);
+      const baseHash = hashId(t);
+      const occ = batchOccurrence[baseHash] || 0;
+      const dedupeKey = occ===0 ? baseHash : `${baseHash}_dup${occ}`;
+      batchOccurrence[baseHash] = occ + 1;
+      if(existingKeys.has(dedupeKey)){ skipped++; return; }
+      t.dedupeKey = dedupeKey;
+      t.id = dedupeKey + "_" + Math.random().toString(36).slice(2,7);
+      t.category = categorize(desc, amount);
+      if(t.category==="Placement") t.placementSub = derivePlacementSub(desc);
       t.manual = false;
-      existingIds.add(t.id);
+      const auto = autoBudgetMonth(t);
+      if(auto){ t.budgetMonth = auto; t.budgetMonthAuto = true; }
+      existingKeys.add(dedupeKey);
       newOnes.push(t); added++;
     });
     state.transactions = state.transactions.concat(newOnes);
     state.transactions.sort((a,b)=> a.date<b.date?1:-1);
+    applyPaydayCascade(state.transactions);
     await saveTransactions();
+    if(newOnes.length>0){
+      const latestMonth = newOnes.reduce((m,t)=> t.date.slice(0,7) > m ? t.date.slice(0,7) : m, newOnes[0].date.slice(0,7));
+      state.dashMonth = latestMonth;
+    }
 
     let msg = `${added} transaction${added>1?"s":""} importée${added>1?"s":""} et catégorisée${added>1?"s":""} automatiquement.`;
     if(skipped) msg += ` ${skipped} déjà présente${skipped>1?"s":""}.`;
@@ -944,10 +1295,14 @@ Regles:
 
   // ---------- dashboard (month by month) ----------
   function getMonths(){
-    const set = new Set(state.transactions.map(t=>t.date.slice(0,7)));
+    const set = new Set(state.transactions.map(effectiveMonth));
     return Array.from(set).sort();
   }
   function renderDashboard(){
+    if(state.openingBalance){
+      document.getElementById("obAmountInput").value = state.openingBalance.amount;
+      document.getElementById("obDateInput").value = state.openingBalance.date;
+    }
     const months = getMonths();
     if(months.length===0){
       document.getElementById("dashboardContent").innerHTML = `<div class="empty-state"><div class="glyph">🖋️</div><div class="main">Rien à afficher pour l'instant</div>Importe un relevé ou ajoute un ticket pour voir apparaître ton tableau de bord.</div>`;
@@ -975,19 +1330,38 @@ Regles:
     }
     navHtml += `</div>`;
 
-    const txs = state.transactions.filter(t => isAll || t.date.slice(0,7)===state.dashMonth);
+    const txs = state.transactions.filter(t => (isAll || effectiveMonth(t)===state.dashMonth) && !t.neutral);
     let income=0, expense=0;
     const byCat = {};
+    const catSurplus = {};
+    const catSums = {};
+    const catHasExpense = {};
     txs.forEach(t=>{
-      if(t.amount>=0) income+=t.amount; else expense+=-t.amount;
-      if(t.amount<0) byCat[t.category] = (byCat[t.category]||0) + (-t.amount);
+      catSums[t.category] = (catSums[t.category]||0) + t.amount;
+      if(t.amount<0) catHasExpense[t.category] = true;
+    });
+    Object.entries(catSums).forEach(([cat,sum])=>{
+      if(INCOME_CATEGORIES.has(cat)){
+        income += sum;
+      } else if(cat==="Placement"){
+        // money set aside, not spent — tracked separately from Dépenses (see the yearly Économie card below)
+      } else if(catHasExpense[cat]){
+        // keep the category visible even if fully offset by refunds within it (net floored at 0) —
+        // disappearing entirely would hide real spending like travaux compensés par un virement du prêt travaux
+        const net = Math.max(0, -sum);
+        byCat[cat] = net;
+        expense += net;
+        if(sum>0) catSurplus[cat] = sum; // more transferred in than spent this period — surfaced, not hidden
+      }
     });
     const balance = income - expense;
 
     let deltaHtml = "";
     if(!isAll && idx>0){
       const prevMonth = months[idx-1];
-      const prevExpense = state.transactions.filter(t=>t.date.slice(0,7)===prevMonth && t.amount<0).reduce((s,t)=>s-t.amount,0);
+      const prevCatSums = {};
+      state.transactions.filter(t=>effectiveMonth(t)===prevMonth && !t.neutral).forEach(t=>{ prevCatSums[t.category] = (prevCatSums[t.category]||0) + t.amount; });
+      const prevExpense = Object.entries(prevCatSums).reduce((s,[cat,sum])=> (!INCOME_CATEGORIES.has(cat) && cat!=="Placement" && sum<0) ? s-sum : s, 0);
       if(prevExpense>0){
         const diffPct = Math.round(((expense-prevExpense)/prevExpense)*100);
         const up = diffPct>0;
@@ -1002,14 +1376,43 @@ Regles:
     }
 
     const catEntries = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
-    const maxVal = catEntries.length ? catEntries[0][1] : 1;
+    const maxVal = catEntries.length ? Math.max(1, catEntries[0][1]) : 1;
     const pieSvg = buildPieSVG(catEntries, expense);
+
+    let realBalanceHtml = "";
+    let savingsHtml = "";
+    let placementTxForClick = [];
+    {
+      const year = isAll ? null : state.dashMonth.slice(0,4);
+      const placementTx = state.transactions.filter(t=> t.category==="Placement" && !t.neutral && (isAll || t.date.slice(0,4)===year));
+      placementTxForClick = placementTx;
+      const yearSavings = placementTx.reduce((s,t)=>s-t.amount,0);
+      const yearLabel = isAll ? "" : ` <span style="font-size:10px; font-weight:400;">(année ${year})</span>`;
+      savingsHtml = `<div class="kpi" id="savingsKpi" style="border-color:var(--mint); cursor:pointer;"><div class="label">Économie${yearLabel} <span style="font-size:10px; font-weight:400;">(clique pour le détail)</span></div><div class="value" style="color:var(--mint-text);">${fmt(yearSavings)}</div></div>`;
+    }
+    if(state.openingBalance && state.openingBalance.date){
+      const ob = state.openingBalance;
+      const relevant = state.transactions.filter(t=>{
+        if(t.neutral || t.date<=ob.date) return false;
+        if(isAll) return true;
+        return t.date.slice(0,7) <= state.dashMonth;
+      });
+      const since = relevant.reduce((s,t)=>s+t.amount,0);
+      const real = ob.amount + since;
+      const todayMonth = new Date().toISOString().slice(0,7);
+      const isCurrentMonth = !isAll && state.dashMonth === todayMonth;
+      const qualifier = isAll ? "" : (isCurrentMonth ? " · projeté" : " · réel");
+      const asOf = isAll ? "" : ` <span style="font-size:10px; font-weight:400;">(fin ${monthLabel(state.dashMonth+"-01")}${qualifier})</span>`;
+      realBalanceHtml = `<div class="kpi balance"><div class="label">Solde réel estimé${asOf}</div><div class="value">${fmt(real)}</div></div>`;
+    }
 
     let html = navHtml + `
       <div class="kpi-row">
-        <div class="kpi income"><div class="label">Recettes</div><div class="value">${fmt(income)}</div></div>
+        <div class="kpi income" id="incomeKpi" style="cursor:pointer;"><div class="label">Recettes <span style="font-size:10px; font-weight:400;">(clique pour le détail)</span></div><div class="value">${fmt(income)}</div></div>
         <div class="kpi expense"><div class="label">Dépenses</div><div class="value">${fmt(expense)}</div>${deltaHtml}</div>
-        <div class="kpi balance"><div class="label">Solde</div><div class="value">${balance>=0?"+":""}${fmt(balance)}</div></div>
+        <div class="kpi balance"><div class="label">Solde du mois</div><div class="value">${balance>=0?"+":""}${fmt(balance)}</div></div>
+        ${realBalanceHtml}
+        ${savingsHtml}
       </div>
       <h2 class="panel-title" style="font-size:15.5px; margin-bottom:14px;">Dépenses par catégorie</h2>
       <div class="dash-chart-row">
@@ -1020,7 +1423,7 @@ Regles:
       const c = catColor(cat);
       html += `
         <div class="bar-row" data-cat="${escapeHtml(cat)}">
-          <div class="cat-name"><span class="cat-dot" style="background:${c};"></span>${escapeHtml(cat)}</div>
+          <div class="cat-name"><span class="cat-dot" style="background:${c};"></span>${escapeHtml(cat)}${catSurplus[cat] ? ` <span style="font-size:10.5px; font-weight:600; color:var(--mint-text);">+${fmt(catSurplus[cat])} non dépensé</span>` : (val===0 ? ' <span style="font-size:10.5px; font-weight:400; color:var(--ink-soft);">(compensé)</span>' : '')}</div>
           <div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${c};"></div></div>
           <div class="cat-amount">${fmt(val)}</div>
         </div>`;
@@ -1028,6 +1431,10 @@ Regles:
     html += `</div></div></div>`;
     container.innerHTML = html;
     bindDashboardNav(months);
+    const incomeKpi = document.getElementById("incomeKpi");
+    if(incomeKpi) incomeKpi.addEventListener("click", ()=> openIncomeDetail(txs));
+    const savingsKpi = document.getElementById("savingsKpi");
+    if(savingsKpi) savingsKpi.addEventListener("click", ()=> openSavingsDetail(placementTxForClick));
     container.querySelectorAll(".bar-row[data-cat], .pie-slice").forEach(el=>{
       el.addEventListener("click", ()=> openCategoryDetail(el.dataset.cat, txs));
     });
@@ -1051,10 +1458,14 @@ Regles:
   }
 
   // ---------- transactions ----------
+  function monthsFrom(predicate){
+    return Array.from(new Set(state.transactions.filter(predicate).map(effectiveMonth))).sort();
+  }
+
   function renderTransactions(){
     const monthSel = document.getElementById("txMonthFilter");
     const catSel = document.getElementById("txCatFilter");
-    const months = getMonths().slice().reverse();
+    const months = monthsFrom(t=>!t.receiptId).slice().reverse();
     monthSel.innerHTML = `<option value="all">Tous les mois</option>` + months.map(m=>`<option value="${m}">${capitalize(monthLabel(m+"-01"))}</option>`).join("");
     catSel.innerHTML = `<option value="all">Toutes catégories</option>` + Object.keys(state.rules).map(c=>`<option value="${c}">${c}</option>`).join("");
     if(!monthSel.dataset.bound){ monthSel.addEventListener("change", renderTxTable); monthSel.dataset.bound="1"; }
@@ -1069,19 +1480,23 @@ Regles:
     const q = normalize(document.getElementById("txSearch").value);
     const body = document.getElementById("txTableBody");
     const rows = state.transactions.filter(t=>{
-      if(month!=="all" && t.date.slice(0,7)!==month) return false;
+      if(t.receiptId) return false;
+      if(month!=="all" && effectiveMonth(t)!==month) return false;
       if(cat!=="all" && t.category!==cat) return false;
       if(q && !normalize(t.description).includes(q)) return false;
       return true;
     });
     if(rows.length===0){
-      body.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--ink-soft);">Aucune transaction ne correspond.</td></tr>`;
+      body.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:30px; color:var(--ink-soft);">Aucune transaction ne correspond.</td></tr>`;
       return;
     }
     const catOptions = Object.keys(state.rules);
     body.innerHTML = rows.map(t=>`
-      <tr class="${t.manual?'manual':''}" data-id="${t.id}">
-        <td>${displayDate(t.date)}</td>
+      <tr class="${t.manual?'manual':''} ${t.neutral?'neutral':''}" data-id="${t.id}">
+        <td>
+          <input type="date" class="tx-date" data-id="${t.id}" value="${t.date}">
+          <input type="month" class="tx-budgetmonth ${t.budgetMonth?'active':''}" data-id="${t.id}" value="${t.budgetMonth||''}" title="Mois de rattachement (laisse vide = mois de la date réelle)">
+        </td>
         <td>${escapeHtml(t.description)}</td>
         <td class="cat-cell">
           <select class="cat-select" data-id="${t.id}">
@@ -1089,9 +1504,41 @@ Regles:
           </select>
         </td>
         <td class="num-cell ${t.amount<0?'amount-neg':'amount-pos'}">${t.amount>=0?"+":""}${fmt(t.amount)}</td>
+        <td style="text-align:center;"><input type="checkbox" class="tx-neutral" data-id="${t.id}" ${t.neutral?"checked":""} title="Transfert interne — exclu des totaux"></td>
         <td><button class="btn ghost small del-btn" data-id="${t.id}">Suppr.</button></td>
       </tr>
     `).join("");
+    body.querySelectorAll(".tx-date").forEach(inp=>{
+      inp.addEventListener("change", async e=>{
+        const id = e.target.dataset.id;
+        const tx = state.transactions.find(t=>t.id===id);
+        if(tx && e.target.value){
+          tx.date = e.target.value;
+          state.transactions.sort((a,b)=> a.date<b.date?1:-1);
+          await saveTransactions();
+          renderTxTable();
+        }
+      });
+    });
+    body.querySelectorAll(".tx-budgetmonth").forEach(inp=>{
+      inp.addEventListener("change", async e=>{
+        const id = e.target.dataset.id;
+        const tx = state.transactions.find(t=>t.id===id);
+        if(tx){
+          tx.budgetMonth = e.target.value || null;
+          tx.budgetMonthAuto = false;
+          await saveTransactions();
+          renderTxTable();
+        }
+      });
+    });
+    body.querySelectorAll(".tx-neutral").forEach(chk=>{
+      chk.addEventListener("change", async e=>{
+        const id = e.target.dataset.id;
+        const tx = state.transactions.find(t=>t.id===id);
+        if(tx){ tx.neutral = e.target.checked; await saveTransactions(); renderTxTable(); }
+      });
+    });
     body.querySelectorAll(".cat-select").forEach(sel=>{
       sel.addEventListener("change", async e=>{
         const id = e.target.dataset.id;
@@ -1108,17 +1555,149 @@ Regles:
       });
     });
   }
+
+  function renderTicketDetail(){
+    const monthSel = document.getElementById("ticketMonthFilter");
+    const catSel = document.getElementById("ticketCatFilter");
+    const months = monthsFrom(t=>!!t.receiptId).slice().reverse();
+    monthSel.innerHTML = `<option value="all">Tous les mois</option>` + months.map(m=>`<option value="${m}">${capitalize(monthLabel(m+"-01"))}</option>`).join("");
+    catSel.innerHTML = `<option value="all">Toutes catégories</option>` + Object.keys(state.rules).map(c=>`<option value="${c}">${c}</option>`).join("");
+    if(!monthSel.dataset.bound){ monthSel.addEventListener("change", renderTicketDetailTable); monthSel.dataset.bound="1"; }
+    if(!catSel.dataset.bound){ catSel.addEventListener("change", renderTicketDetailTable); catSel.dataset.bound="1"; }
+    const search = document.getElementById("ticketSearch");
+    if(!search.dataset.bound){ search.addEventListener("input", renderTicketDetailTable); search.dataset.bound="1"; }
+    renderTicketDetailTable();
+  }
+  function renderTicketDetailTable(){
+    const month = document.getElementById("ticketMonthFilter").value;
+    const cat = document.getElementById("ticketCatFilter").value;
+    const q = normalize(document.getElementById("ticketSearch").value);
+    const body = document.getElementById("ticketDetailTableBody");
+    const rows = state.transactions.filter(t=>{
+      if(!t.receiptId) return false;
+      if(month!=="all" && effectiveMonth(t)!==month) return false;
+      if(cat!=="all" && t.category!==cat) return false;
+      if(q && !normalize(t.description).includes(q)) return false;
+      return true;
+    });
+    if(rows.length===0){
+      body.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:30px; color:var(--ink-soft);">Aucun article de ticket ne correspond.</td></tr>`;
+      return;
+    }
+    const catOptions = Object.keys(state.rules);
+    body.innerHTML = rows.map(t=>`
+      <tr class="${t.optType==='optimisable'?'manual':''}" data-id="${t.id}">
+        <td>${displayDate(t.date)}</td>
+        <td>${escapeHtml(t.description)}${t.optType==='optimisable' ? ` <span class="item-tag optimisable" style="cursor:default;">💡</span>` : ""}</td>
+        <td class="cat-cell">
+          <select class="ticket-cat-select" data-id="${t.id}">
+            ${catOptions.map(c=>`<option value="${c}" ${c===t.category?"selected":""}>${c}</option>`).join("")}
+          </select>
+          ${t.category==="Alimentation" ? `
+            <select class="ticket-foodsub-select" data-id="${t.id}" style="margin-top:4px; font-size:11px; padding:3px 6px;">
+              ${FOOD_SUBCATEGORIES.map(s=>`<option value="${escapeHtml(s)}" ${s===t.foodSub?"selected":""}>${s}</option>`).join("")}
+            </select>` : ""}
+        </td>
+        <td class="num-cell ${t.amount<0?'amount-neg':'amount-pos'}">${t.amount>=0?"+":""}${fmt(t.amount)}</td>
+      </tr>
+    `).join("");
+    body.querySelectorAll(".ticket-cat-select").forEach(sel=>{
+      sel.addEventListener("change", async e=>{
+        const id = e.target.dataset.id;
+        const tx = state.transactions.find(t=>t.id===id);
+        if(tx){
+          tx.category=e.target.value; tx.manual=true;
+          if(tx.category==="Alimentation" && !tx.foodSub){
+            const parts = tx.description.split(" — ");
+            tx.foodSub = guessFoodSub(parts.length>1 ? parts[parts.length-1] : tx.description);
+          }
+          if(tx.category!=="Alimentation") tx.foodSub = null;
+          await saveTransactions(); renderTicketDetailTable();
+        }
+      });
+    });
+    body.querySelectorAll(".ticket-foodsub-select").forEach(sel=>{
+      sel.addEventListener("change", async e=>{
+        const id = e.target.dataset.id;
+        const tx = state.transactions.find(t=>t.id===id);
+        if(tx){
+          tx.foodSub = e.target.value;
+          const parts = tx.description.split(" — ");
+          const itemName = parts.length>1 ? parts[parts.length-1] : tx.description;
+          await learnFoodKeyword(itemName, tx.foodSub);
+          await saveTransactions();
+          renderTicketDetailTable();
+        }
+      });
+    });
+  }
+  function downloadFile(filename, content, mime){
+    try{
+      const blob = new Blob(["\uFEFF" + content], {type: (mime||"text/csv") + ";charset=utf-8;"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(()=>{
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 200);
+    }catch(err){
+      console.error("download failed", err);
+      // Fallback: open the content in a new tab so it can be saved manually
+      const w = window.open("", "_blank");
+      if(w){
+        w.document.write(`<pre style="white-space:pre-wrap; font-family:monospace;">${content.replace(/[&<>]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]))}</pre>`);
+      } else {
+        alert("Le téléchargement automatique a échoué et les popups semblent bloquées. Autorise les popups pour ce site puis réessaie.");
+      }
+    }
+  }
+
   function exportCsv(){
     if(state.transactions.length===0) return;
-    let csv = "Date;Libelle;Categorie;Montant\n";
+    let csv = "Date;Libelle;Categorie;Montant;Neutre\n";
     state.transactions.forEach(t=>{
-      csv += `${displayDate(t.date)};"${t.description.replace(/"/g,'""')}";${t.category};${t.amount.toFixed(2).replace(".",",")}\n`;
+      csv += `${displayDate(t.date)};"${t.description.replace(/"/g,'""')}";${t.category};${t.amount.toFixed(2).replace(".",",")};${t.neutral?"Oui":"Non"}\n`;
     });
-    const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href=url; a.download="mes-comptes-export.csv"; a.click();
-    URL.revokeObjectURL(url);
+    downloadFile("mes-comptes-export.csv", csv);
+  }
+
+  function exportAllData(){
+    const rows = state.transactions.slice().sort((a,b)=> a.date<b.date?-1:1);
+    let csv = "id;date;date_effective;libelle;categorie;montant;neutre;manuel;mois_rattachement;mois_rattachement_auto;source;sous_categorie_alimentaire;type_optimisation;note_optimisation\n";
+    rows.forEach(t=>{
+      const esc = s => `"${(s||"").toString().replace(/"/g,'""')}"`;
+      csv += [
+        esc(t.id),
+        displayDate(t.date),
+        effectiveMonth(t),
+        esc(t.description),
+        esc(t.category),
+        t.amount.toFixed(2).replace(".",","),
+        t.neutral ? "Oui" : "Non",
+        t.manual ? "Oui" : "Non",
+        t.budgetMonth || "",
+        t.budgetMonthAuto ? "Oui" : "Non",
+        t.receiptId ? "Ticket" : "Releve",
+        esc(t.foodSub || ""),
+        esc(t.optType || ""),
+        esc(t.optNote || "")
+      ].join(";") + "\n";
+    });
+    if(state.openingBalance){
+      csv += `\nSolde de reference;;;${state.openingBalance.amount.toFixed(2).replace(".",",")};;;;;;;;;;\n`;
+      csv += `Date du solde de reference;${displayDate(state.openingBalance.date)};;;;;;;;;;;;\n`;
+    }
+    downloadFile("mes-comptes-diagnostic-complet.csv", csv);
+    const status = document.getElementById("exportAllStatus");
+    if(status){
+      status.textContent = `${rows.length} ligne(s) exportée(s). Si le téléchargement ne démarre pas, vérifie les popups bloquées, ou l'onglet Téléchargements de ton navigateur.`;
+      status.className = "status-msg ok";
+    }
   }
 
   // ---------- rules ----------
@@ -1154,12 +1733,58 @@ Regles:
       if(e.key==="Enter"){ e.preventDefault(); grid.querySelector(`.add-kw-btn[data-cat="${CSS.escape(inp.dataset.cat)}"]`).click(); }
     }));
     grid.querySelectorAll(".del-cat-btn").forEach(b=>b.addEventListener("click", async e=>{
-      const cat = e.target.dataset.cat;
-      if(!confirm(`Supprimer la catégorie "${cat}" ? Les transactions déjà classées ici passeront en "Autres".`)) return;
+      const btn = e.target;
+      const cat = btn.dataset.cat;
+      if(btn.dataset.armed !== "1"){
+        btn.dataset.armed = "1";
+        btn.textContent = "Sûre ? Cliquer pour confirmer";
+        btn.classList.add("danger");
+        setTimeout(()=>{ if(btn.dataset.armed==="1"){ btn.dataset.armed="0"; btn.textContent="Supprimer la catégorie"; btn.classList.remove("danger"); } }, 4000);
+        return;
+      }
       delete state.rules[cat];
       state.transactions.forEach(t=>{ if(t.category===cat) t.category="Autres"; });
       await saveRules(); await saveTransactions();
       renderRules();
+    }));
+  }
+  function foodSubColor(sub){
+    const idx = FOOD_SUBCATEGORIES.indexOf(sub);
+    return FOOD_SUB_COLORS[idx>=0 ? idx % FOOD_SUB_COLORS.length : 0];
+  }
+  function renderFoodRules(){
+    const grid = document.getElementById("foodRulesGrid");
+    const subs = FOOD_SUBCATEGORIES.filter(s=>s!=="Autre alimentation");
+    grid.innerHTML = subs.map(sub=>{
+      const kws = state.foodKeywords[sub] || [];
+      return `
+      <div class="rule-card" data-sub="${escapeHtml(sub)}">
+        <div class="rc-head">
+          <div class="rc-title"><span class="cat-dot" style="background:${foodSubColor(sub)};"></span>${escapeHtml(sub)}</div>
+        </div>
+        <div class="kw-list">
+          ${kws.map(kw=>`<span class="kw-chip">${escapeHtml(kw)}<button class="del-food-kw-btn" data-sub="${escapeHtml(sub)}" data-kw="${escapeHtml(kw)}">×</button></span>`).join("") || '<span style="font-size:12px; color:var(--ink-soft);">aucun mot-clé</span>'}
+        </div>
+        <div class="add-kw-row">
+          <input placeholder="ajouter un mot-clé…" class="add-food-kw-input" data-sub="${escapeHtml(sub)}">
+          <button class="btn secondary small add-food-kw-btn" data-sub="${escapeHtml(sub)}">Ajouter</button>
+        </div>
+      </div>
+    `;
+    }).join("");
+    grid.querySelectorAll(".del-food-kw-btn").forEach(b=>b.addEventListener("click", async e=>{
+      const {sub,kw} = e.target.dataset;
+      state.foodKeywords[sub] = state.foodKeywords[sub].filter(k=>k!==kw);
+      await saveFoodKeywords(); renderFoodRules();
+    }));
+    grid.querySelectorAll(".add-food-kw-btn").forEach(b=>b.addEventListener("click", async e=>{
+      const sub = e.target.dataset.sub;
+      const input = grid.querySelector(`.add-food-kw-input[data-sub="${CSS.escape(sub)}"]`);
+      const val = input.value.trim();
+      if(val){ state.foodKeywords[sub].push(val); input.value=""; await saveFoodKeywords(); renderFoodRules(); }
+    }));
+    grid.querySelectorAll(".add-food-kw-input").forEach(inp=>inp.addEventListener("keydown", e=>{
+      if(e.key==="Enter"){ e.preventDefault(); grid.querySelector(`.add-food-kw-btn[data-sub="${CSS.escape(inp.dataset.sub)}"]`).click(); }
     }));
   }
   async function addCategory(){
@@ -1172,44 +1797,137 @@ Regles:
     renderRules();
   }
   async function recategorize(){
-    let changed=0;
+    let changed=0, monthShifted=0;
     state.transactions.forEach(t=>{
       if(!t.manual){
-        const newCat = categorize(t.description);
+        const newCat = categorize(t.description, t.amount);
         if(newCat!==t.category){ t.category=newCat; changed++; }
+        if(t.category==="Placement" && !t.placementSub) t.placementSub = derivePlacementSub(t.description);
+      }
+      if(!t.budgetMonth || t.budgetMonthAuto===true){
+        const auto = autoBudgetMonth(t);
+        if(auto && auto!==t.budgetMonth){ t.budgetMonth = auto; t.budgetMonthAuto = true; monthShifted++; }
       }
     });
+    const cascaded = applyPaydayCascade(state.transactions);
     await saveTransactions();
-    alert(changed>0 ? `${changed} transaction(s) recatégorisée(s).` : "Rien à changer — tout est déjà à jour.");
+    const parts = [];
+    if(changed>0) parts.push(`${changed} transaction(s) recatégorisée(s)`);
+    if(monthShifted>0) parts.push(`${monthShifted} versement(s) tardif(s) rattaché(s) au mois suivant`);
+    if(cascaded>0) parts.push(`${cascaded} dépense(s) suivant un salaire tardif rattachée(s) au mois suivant`);
+    setAiGuessStatus(parts.length ? parts.join(", ") + "." : "Rien à changer — tout est déjà à jour.", false);
     renderTransactions();
   }
 
+  function setAiGuessStatus(msg, isErr){
+    const el = document.getElementById("aiGuessStatus");
+    el.textContent = msg;
+    el.className = "status-msg " + (msg ? (isErr?"err":"ok") : "");
+  }
+
+  async function aiGuessUnknownCategories(){
+    const unresolved = state.transactions.filter(t=>t.category==="Autres" && !t.manual);
+    const uniqueDescs = Array.from(new Set(unresolved.map(t=>t.description))).slice(0, 60);
+    if(uniqueDescs.length===0){
+      setAiGuessStatus("Aucune transaction non reconnue en ce moment — tout est déjà catégorisé.", false);
+      return;
+    }
+    const btn = document.getElementById("aiGuessBtn");
+    btn.disabled = true;
+    setAiGuessStatus(`Analyse de ${uniqueDescs.length} libellé(s) en cours…`, false);
+    try{
+      const categories = Object.keys(state.rules);
+      const numbered = categories.map((c,i)=>`${i+1}=${c}`).join(", ");
+      const descList = uniqueDescs.map((d,i)=>`${i+1}. ${d}`).join("\n");
+      const prompt = `Voici des libelles d'operations bancaires francaises non categorises. Pour chacun, indique le numero de la categorie la plus probable, meme si le nom de l'enseigne t'est inconnu — deduis-le du contexte (type de commerce, mots du libelle, sigles courants en France).
+Categories : ${numbered}
+Libelles :
+${descList}
+Reponds UNIQUEMENT avec un numero par ligne, dans le meme ordre, une ligne par libelle, rien d'autre. Si vraiment aucune categorie ne convient, reponds 0 pour cette ligne.`;
+      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          model:"claude-sonnet-4-6",
+          max_tokens:1000,
+          messages:[{ role:"user", content:[{ type:"text", text: prompt }] }]
+        })
+      });
+      if(!resp.ok) throw new Error("Erreur API "+resp.status);
+      const data = await resp.json();
+      const textBlock = (data.content||[]).find(b=>b.type==="text");
+      if(!textBlock) throw new Error("Reponse sans texte");
+      const nums = textBlock.text.trim().split(/\r\n|\n|\r/).map(l=>parseInt(l.trim(),10));
+
+      let classified=0, newKeywords=0;
+      uniqueDescs.forEach((desc,i)=>{
+        const num = nums[i];
+        const cat = categories[num-1];
+        if(!cat) return;
+        state.transactions.forEach(t=>{
+          if(t.description===desc && t.category==="Autres" && !t.manual){ t.category=cat; classified++; }
+        });
+        const kw = normalize(merchantLabel(desc));
+        if(kw.length>=3 && !state.rules[cat].includes(kw)){
+          state.rules[cat].push(kw);
+          newKeywords++;
+        }
+      });
+
+      await saveRules();
+      await saveTransactions();
+      renderTransactions();
+      renderRules();
+      setAiGuessStatus(`${classified} transaction(s) catégorisée(s), ${newKeywords} nouveau(x) mot(s)-clé(s) retenu(s) pour la prochaine fois.`, false);
+    }catch(err){
+      console.error("ai guess failed", err);
+      setAiGuessStatus("La reconnaissance IA a échoué — réessaie dans un instant.", true);
+    }finally{
+      btn.disabled = false;
+    }
+  }
+
   async function resetAll(){
-    if(!confirm("Réinitialiser toutes les données ? Transactions, tickets enregistrés et règles personnalisées seront définitivement effacés. Cette action est irréversible.")) return;
+    const status = document.getElementById("resetStatus");
+    status.textContent = "";
+    let failures = 0;
+    async function tryDelete(key){
+      try{ await window.storage.delete(key, false); }
+      catch(e){ failures++; console.error("reset: failed to delete", key, e); }
+    }
     try{
       const idx = await loadReceiptsIndex();
-      for(const r of idx){
-        try{ await window.storage.delete("receipt:"+r.id, false); }catch(e){}
-      }
-    }catch(e){}
+      for(const r of idx){ await tryDelete("receipt:"+r.id); }
+    }catch(e){ failures++; console.error("reset: receipts index read failed", e); }
     try{
       const listed = await window.storage.list("receipt:", false);
-      if(listed && listed.keys){
-        for(const k of listed.keys){ try{ await window.storage.delete(k, false); }catch(e){} }
-      }
-    }catch(e){}
-    try{ await window.storage.delete("receipts_index", false); }catch(e){}
-    try{ await window.storage.delete("transactions", false); }catch(e){}
-    try{ await window.storage.delete("rules", false); }catch(e){}
+      if(listed && listed.keys){ for(const k of listed.keys){ await tryDelete(k); } }
+    }catch(e){ /* no receipts left, fine */ }
+    await tryDelete("receipts_index");
+    await tryDelete("transactions");
+    await tryDelete("rules");
+    await tryDelete("openingBalance");
+    await tryDelete("foodKeywords");
 
     state.transactions = [];
     state.rules = JSON.parse(JSON.stringify(DEFAULT_RULES));
+    state.foodKeywords = JSON.parse(JSON.stringify(DEFAULT_FOOD_KEYWORDS));
+    state.openingBalance = null;
     state.dashMonth = null;
+    state.ticketsMonth = null;
     state.parsed = null;
     state.currentReceipt = null;
     await saveRules();
+    await saveFoodKeywords();
 
-    alert("Toutes les données ont été réinitialisées.");
+    document.getElementById("resetConfirmZone").style.display = "none";
+    if(failures>0){
+      status.textContent = `Réinitialisation partielle — ${failures} suppression(s) ont échoué (voir la console). Réessaie, ou recharge la page puis réessaie.`;
+      status.className = "status-msg err";
+    } else {
+      status.textContent = "Toutes les données ont été réinitialisées.";
+      status.className = "status-msg ok";
+    }
     switchTab("import");
   }
 
@@ -1240,13 +1958,122 @@ Regles:
     return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
   }
 
+  const FOOD_SUBCATEGORIES = ["Fruits & légumes","Viande & poisson","Produits laitiers & œufs","Féculents (pâtes, riz, pain)","Épicerie salée","Épicerie sucrée","Gâteaux & snacks","Boissons & eau","Apéro & alcool","Autre alimentation"];
+  const FOOD_SUB_LETTER = { F:"Fruits & légumes", V:"Viande & poisson", L:"Produits laitiers & œufs", P:"Féculents (pâtes, riz, pain)", S:"Épicerie salée", U:"Épicerie sucrée", G:"Gâteaux & snacks", B:"Boissons & eau", A:"Apéro & alcool", X:"Autre alimentation" };
+  const DEFAULT_FOOD_KEYWORDS = {
+    "Fruits & légumes": ["pomme","poire","banane","orange","fraise","tomate","carotte","salade","courgette","oignon","citron","raisin","concombre","poireau","brocoli","legume","fruit","avocat","champignon","kiwi","haricot vert","haricots verts"],
+    "Viande & poisson": ["poulet","boeuf","porc","veau","agneau","jambon","saucisse","steak","viande","poisson","saumon","thon","cabillaud","crevette","merguez","lardons","dinde","chorizo","charcuterie","escalope","filet"],
+    "Produits laitiers & œufs": ["lait","yaourt","fromage","beurre","creme","yogourt","camembert","emmental","mozzarella","gruyere","comte","petit suisse","oeuf"],
+    "Féculents (pâtes, riz, pain)": ["pates","pate ","riz","farine","maizena","pain","semoule","quinoa","couscous","biscotte","fusilli","penne","spaghetti","macaroni","tagliatelle","linguine","coquillette","tortellini","gnocchi","nouilles","vermicelle","lasagne","cannelloni","farfalle","pomme de terre","patate","lentille","haricot sec","pois chiche"],
+    "Épicerie salée": ["conserve","huile","sel","epice","sauce","moutarde","cornichon","bouillon","vinaigre","the ","cafe","tisane"],
+    "Épicerie sucrée": ["sucre","confiture","miel","cereales","nutella","pate a tartiner","levure","compote"],
+    "Gâteaux & snacks": ["biscuit","gateau","bonbon","chocolat","gaufre","cookie","barre choco","viennoiserie","patisserie","confiserie"],
+    "Boissons & eau": ["eau ","eau minerale","jus","soda","limonade","cola","boisson"],
+    "Apéro & alcool": ["vin","biere","apero","champagne","alcool","cacahuete","olives","chips apero","whisky","rhum","pastis","chips"]
+  };
+  async function loadFoodKeywords(){ return loadJSON("foodKeywords", null); }
+  async function saveFoodKeywords(){ await saveJSON("foodKeywords", state.foodKeywords); }
+  function migrateFoodKeywords(stored){
+    const fk = stored ? stored : JSON.parse(JSON.stringify(DEFAULT_FOOD_KEYWORDS));
+    FOOD_SUBCATEGORIES.filter(s=>s!=="Autre alimentation").forEach(s=>{
+      if(!fk[s]) fk[s] = (DEFAULT_FOOD_KEYWORDS[s]||[]).slice();
+    });
+    return fk;
+  }
+  // Longest matching keyword wins, so a specific multi-word keyword (e.g. "pomme de terre")
+  // correctly beats a shorter one from another subcategory (e.g. "pomme").
+  function guessFoodSub(name){
+    const norm = normalize(name);
+    const dict = state.foodKeywords || DEFAULT_FOOD_KEYWORDS;
+    let best = null, bestLen = 0;
+    for(const [sub, kws] of Object.entries(dict)){
+      for(const kw of kws){
+        const kwNorm = normalize(kw).trim();
+        if(kwNorm && norm.includes(kwNorm) && kwNorm.length>bestLen){ best = sub; bestLen = kwNorm.length; }
+      }
+    }
+    return best || "Autre alimentation";
+  }
+
+  const FOOD_STOPWORDS = ["bio","frais","fraiche","surgele","nature","pack","format","sachet","boite","botte","piece","pieces","de","du","des","le","la","les","au","aux","et","gr","kg","cl","ml"];
+  function extractFoodKeywords(name){
+    const words = normalize(name).split(/\s+/);
+    const kws = [];
+    words.forEach(w=>{
+      const clean = w.replace(/[^a-z0-9]/g,"");
+      if(clean.length<3) return;
+      if(FOOD_STOPWORDS.includes(clean)) return;
+      if(/^\d+[a-z]{0,2}$/.test(clean)) return; // pure quantities like 500g, 1l, 6x
+      kws.push(clean);
+    });
+    return kws;
+  }
+  async function learnFoodKeyword(name, sub){
+    if(!sub || sub==="Autre alimentation" || !name) return;
+    if(!state.foodKeywords[sub]) state.foodKeywords[sub] = [];
+    const kws = extractFoodKeywords(name);
+    let changed = false;
+    kws.forEach(kw=>{
+      if(!state.foodKeywords[sub].includes(kw)){ state.foodKeywords[sub].push(kw); changed = true; }
+    });
+    if(changed) await saveFoodKeywords();
+  }
+
+  function parseReceiptText(text, categories){
+    const lines = text.trim().split(/\r\n|\n|\r/).map(l=>l.trim()).filter(Boolean);
+    if(lines.length===0) return null;
+    const catAt = n => { const c = categories[parseInt(n,10)-1]; return c!==undefined ? c : "Autres"; };
+    const subAt = letter => FOOD_SUB_LETTER[(letter||"").trim().toUpperCase()] || null;
+
+    const head = lines[0].split(";");
+    const store = (head[0]||"").trim();
+    const date = parseDateToISO((head[1]||"").trim());
+    const total = parseAmount((head[2]||"").trim());
+    const category = catAt(head[3]);
+
+    const items = [];
+    for(let i=1;i<lines.length;i++){
+      const p = lines[i].split(";");
+      const name = (p[0]||"").trim();
+      const amount = parseAmount(p[1]);
+      if(!name || isNaN(amount)) continue;
+      const itemCat = catAt(p[2]);
+      const eFlag = (p[3]||"").trim()==="1";
+      const note = (p[4]||"").trim();
+      let foodSub = null;
+      if(itemCat==="Alimentation"){
+        const local = guessFoodSub(name);
+        foodSub = local!=="Autre alimentation" ? local : (subAt(p[5]) || "Autre alimentation");
+      }
+      items.push({ name, amount, category: itemCat, optType: eFlag?"optimisable":"essentiel", optNote: eFlag?note:"", foodSub });
+    }
+    return { store, date, total: isNaN(total)?null:total, category, items };
+  }
+
   async function analyzeReceiptContent(contentBlock){
-    const categories = Object.keys(state.rules).join(", ");
-    const prompt = `Tu analyses un ticket de caisse francais (image ou PDF). Reponds UNIQUEMENT avec un objet JSON valide, sans texte autour, sans balises markdown. Structure exacte:
-{"store": "nom du magasin ou null", "date": "YYYY-MM-DD ou null", "total": nombre positif, "category": "une valeur parmi: ${categories}", "items": [{"name": "nom article court", "amount": nombre positif, "category": "une valeur parmi: ${categories}", "type": "essentiel ou optimisable", "conseil": "conseil court, uniquement si type=optimisable, sinon chaine vide"}]}
-Choisis la categorie la plus pertinente pour le magasin et pour chaque article. Si le ticket contient des meubles, categorise-les en "Mobilier". Si le ticket contient des articles de decoration (cadres, coussins, luminaires, petits objets deco...), categorise-les en "Deco". Si le ticket vient d'un magasin de bricolage ou concerne des travaux de renovation, categorise en "Travaux". Si le ticket contient des produits d'hygiene ou de beaute (cheveux, cosmetiques...), categorise-les en "Hygiene & beaute". Si le ticket contient du tabac ou du materiel de vapotage/e-liquide, categorise en "Tabac & vapotage".
-Pour chaque article d'alimentation ou d'hygiene, evalue aussi s'il s'agit d'un achat de base necessaire ("essentiel": fruits, legumes, produits frais, produits de base, hygiene courante) ou d'un produit ultra-transforme, une marque premium evitable, ou un produit dont une alternative moins chere ou plus saine existe facilement ("optimisable": biscuits/gateaux industriels, sodas, plats prepares chers, snacks sucres, marques premium sur des produits basiques...). Si "optimisable", donne dans "conseil" une suggestion courte, concrete et bienveillante (une phrase, ex: "Alternative maison possible, moins chere et sans additifs."). Pour les articles hors alimentation/hygiene, mets "type":"essentiel" et "conseil":"".
-Si tu ne peux pas lire les articles un par un, laisse "items" a un tableau vide mais donne quand meme le total. N'invente jamais un montant que tu ne peux pas lire clairement.`;
+    const categories = Object.keys(state.rules);
+    const numbered = categories.map((c,i)=>`${i+1}=${c}`).join(", ");
+    const prompt = `Tu lis un ticket de caisse francais (image ou PDF). Reponds UNIQUEMENT en texte brut, sans JSON, sans markdown, format exact :
+Ligne 1 : MAGASIN;DATE;TOTAL;CAT
+Puis une ligne par article achete : NOM;PRIX;CAT;E;NOTE;SUBCAT
+
+Categories disponibles, indique uniquement le numero dans CAT : ${numbered}
+SUBCAT : uniquement si CAT correspond a Alimentation, une seule lettre parmi F/V/L/P/S/U/G/B/A/X (sinon laisse vide) :
+F=Fruits & legumes, V=Viande & poisson, L=Produits laitiers & oeufs, P=Feculents (pates, riz, pain), S=Epicerie salee, U=Epicerie sucree, G=Gateaux & snacks, B=Boissons & eau, A=Apero & alcool, X=Autre alimentation
+
+Regles :
+- MAGASIN : nom de l'enseigne tel qu'il apparait sur le ticket, jamais vide si lisible
+- DATE : format JJ/MM/AAAA, vide si illisible
+- TOTAL : montant total paye, nombre avec virgule decimale (ex: 42,10)
+- CAT : numero de categorie le plus pertinent (pour le magasin en ligne 1, pour chaque article ensuite) — toujours un NUMERO. Les produits d'entretien/menagers (lessive, vaisselle, papier toilette, produits nettoyants, eponges...) vont dans "Entretien & menager", jamais dans "Alimentation"
+- NOM : nom court de l'article, 2 a 4 mots
+- PRIX : prix de l'article, nombre avec virgule decimale
+- E : 1 si l'article est alimentaire ou d'hygiene et qu'une alternative moins chere ou plus saine existe probablement (produits ultra-transformes, biscuits/sodas industriels, marques premium evitables sur un produit basique...), sinon 0
+- NOTE : uniquement si E=1, suggestion tres courte et concrete (5 mots maximum), sinon laisse vide
+- SUBCAT : toujours une LETTRE (jamais un chiffre), uniquement quand CAT=Alimentation
+- Sois le plus concis possible pour lister un maximum d'articles
+- N'invente jamais un prix, un article ou un magasin que tu ne peux pas lire clairement
+- Si tu ne peux pas distinguer les articles un par un, ne mets aucune ligne d'article mais donne quand meme la ligne 1 avec le magasin, la date et le total`;
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
       method:"POST",
       headers:{"Content-Type":"application/json"},
@@ -1260,8 +2087,10 @@ Si tu ne peux pas lire les articles un par un, laisse "items" a un tableau vide 
     const data = await resp.json();
     const textBlock = (data.content||[]).find(b=>b.type==="text");
     if(!textBlock) throw new Error("Reponse sans texte");
-    let raw = textBlock.text.trim().replace(/^```json/i,"").replace(/^```/,"").replace(/```$/,"").trim();
-    return JSON.parse(raw);
+    const raw = textBlock.text.trim().replace(/^```[a-z]*/i,"").replace(/```$/,"").trim();
+    const parsed = parseReceiptText(raw, categories);
+    if(!parsed) throw new Error("Reponse illisible");
+    return parsed;
   }
 
   async function handleReceiptFile(file){
@@ -1276,12 +2105,12 @@ Si tu ne peux pas lire les articles un par un, laisse "items" a un tableau vide 
         thumbImg = pdfPlaceholderThumb();
       } else {
         [fullImg, thumbImg] = await Promise.all([
-          compressImage(file, 1000, 0.65),
+          compressImage(file, 1400, 0.72),
           compressImage(file, 220, 0.55)
         ]);
         base64 = dataUrlToBase64(fullImg);
       }
-      let extracted;
+      let extracted, analysisFailed = false;
       try{
         const contentBlock = isPdf
           ? { type:"document", source:{ type:"base64", media_type:"application/pdf", data: base64 } }
@@ -1290,24 +2119,43 @@ Si tu ne peux pas lire les articles un par un, laisse "items" a un tableau vide 
       }catch(err){
         console.error("analyse ticket echouee", err);
         extracted = { store:"", date:null, total:null, category:"Autres", items:[] };
+        analysisFailed = true;
       }
       state.currentReceipt = {
         fullImage: fullImg, thumbImage: thumbImg, isPdf,
+        imgHash: hashString(base64),
         store: extracted.store || "",
         date: extracted.date || new Date().toISOString().slice(0,10),
         total: (typeof extracted.total === "number") ? extracted.total : "",
         category: extracted.category && state.rules[extracted.category] !== undefined ? extracted.category : "Autres",
-        items: Array.isArray(extracted.items) ? extracted.items.map(it=>({
-          name: it.name || "", amount: (typeof it.amount==="number")?it.amount:0,
-          category: it.category && state.rules[it.category]!==undefined ? it.category : "Autres",
-          optType: it.type === "optimisable" ? "optimisable" : "essentiel",
-          optNote: it.conseil || ""
-        })) : []
+        items: Array.isArray(extracted.items) ? extracted.items.map(it=>{
+          const resolvedCat = it.category && state.rules[it.category]!==undefined ? it.category : "Autres";
+          return {
+            name: it.name || "", amount: (typeof it.amount==="number")?it.amount:0,
+            category: resolvedCat,
+            optType: it.optType === "optimisable" ? "optimisable" : "essentiel",
+            optNote: it.optNote || "",
+            foodSub: resolvedCat==="Alimentation" ? (FOOD_SUBCATEGORIES.includes(it.foodSub) ? it.foodSub : guessFoodSub(it.name||"")) : null
+          };
+        }) : []
       };
+      state.currentReceipt.duplicateInfo = await findDuplicateReceipt(
+        state.currentReceipt.imgHash, state.currentReceipt.store, state.currentReceipt.date, state.currentReceipt.total
+      );
       renderReceiptReview();
+      if(analysisFailed){
+        document.getElementById("receiptStatus").textContent = "La lecture automatique a échoué — remplis les champs à la main.";
+        document.getElementById("receiptStatus").className = "status-msg err";
+      }
     }catch(e){
       console.error(e);
-      alert("Impossible de lire ce fichier. Réessaie avec une autre photo ou un autre PDF.");
+      const dz = document.getElementById("receiptDropzone");
+      const warn = document.createElement("p");
+      warn.className = "status-msg err";
+      warn.style.marginTop = "10px";
+      warn.textContent = "Impossible de lire ce fichier. Réessaie avec une autre photo ou un autre PDF.";
+      dz.insertAdjacentElement("afterend", warn);
+      setTimeout(()=>warn.remove(), 6000);
     }finally{
       document.getElementById("receiptAnalyzing").style.display = "none";
     }
@@ -1316,6 +2164,18 @@ Si tu ne peux pas lire les articles un par un, laisse "items" a un tableau vide 
   function renderReceiptReview(){
     const rc = state.currentReceipt;
     document.getElementById("receiptReviewZone").style.display = "block";
+    const warnEl = document.getElementById("receiptDuplicateWarning");
+    if(rc.duplicateInfo){
+      const d = rc.duplicateInfo;
+      warnEl.style.display = "block";
+      warnEl.className = "dup-warning";
+      warnEl.textContent = d.type==="exact"
+        ? "⚠️ Cette photo semble identique à un ticket déjà enregistré — vérifie que tu ne l'ajoutes pas en double."
+        : `⚠️ Un ticket similaire (même enseigne, même date, même montant) a déjà été enregistré le ${displayDate(d.entry.date)}. Continue seulement si c'est un achat différent.`;
+    } else {
+      warnEl.style.display = "none";
+      warnEl.textContent = "";
+    }
     const thumbWrap = document.getElementById("receiptThumbWrap");
     thumbWrap.innerHTML = rc.isPdf
       ? `<iframe src="${rc.fullImage}" style="width:100%; height:230px; border:1px solid var(--line); border-radius:10px; background:#fff;"></iframe>`
@@ -1340,6 +2200,7 @@ Si tu ne peux pas lire les articles un par un, laisse "items" a un tableau vide 
     const catOptions = Object.keys(state.rules);
     wrap.innerHTML = rc.items.map((it,i)=>{
       const isOpt = it.optType === "optimisable";
+      const isFood = it.category === "Alimentation";
       return `
       <div class="item-row" data-i="${i}">
         <input type="checkbox" class="item-include" data-i="${i}" ${it.include!==false?"checked":""}>
@@ -1348,6 +2209,9 @@ Si tu ne peux pas lire les articles un par un, laisse "items" a un tableau vide 
             <input type="text" class="item-name" data-i="${i}" value="${escapeHtml(it.name)}" style="flex:1;">
             <span class="item-tag ${isOpt?'optimisable':'essentiel'}" data-i="${i}" title="Cliquer pour changer">${isOpt?'💡 optimisable':'✓ essentiel'}</span>
           </div>
+          ${isFood ? `<select class="item-foodsub" data-i="${i}" style="margin-top:5px; font-size:11px; padding:3px 6px;">
+            ${FOOD_SUBCATEGORIES.map(s=>`<option value="${s}" ${s===it.foodSub?"selected":""}>${s}</option>`).join("")}
+          </select>` : ""}
           ${isOpt && it.optNote ? `<div class="item-note">${escapeHtml(it.optNote)}</div>` : ""}
         </div>
         <input type="number" step="0.01" class="item-amount" data-i="${i}" value="${it.amount}">
@@ -1360,7 +2224,17 @@ Si tu ne peux pas lire les articles un par un, laisse "items" a un tableau vide 
     }).join("");
     wrap.querySelectorAll(".item-name").forEach(inp=>inp.addEventListener("input", e=>{ rc.items[e.target.dataset.i].name = e.target.value; }));
     wrap.querySelectorAll(".item-amount").forEach(inp=>inp.addEventListener("input", e=>{ rc.items[e.target.dataset.i].amount = parseFloat(e.target.value)||0; }));
-    wrap.querySelectorAll(".item-cat").forEach(sel=>sel.addEventListener("change", e=>{ rc.items[e.target.dataset.i].category = e.target.value; }));
+    wrap.querySelectorAll(".item-foodsub").forEach(sel=>sel.addEventListener("change", e=>{
+      const it = rc.items[e.target.dataset.i];
+      it.foodSub = e.target.value;
+      learnFoodKeyword(it.name, it.foodSub);
+    }));
+    wrap.querySelectorAll(".item-cat").forEach(sel=>sel.addEventListener("change", e=>{
+      const it = rc.items[e.target.dataset.i];
+      it.category = e.target.value;
+      if(it.category==="Alimentation" && !it.foodSub) it.foodSub = guessFoodSub(it.name||"");
+      renderItemsList();
+    }));
     wrap.querySelectorAll(".item-include").forEach(chk=>chk.addEventListener("change", e=>{ rc.items[e.target.dataset.i].include = e.target.checked; }));
     wrap.querySelectorAll(".item-tag").forEach(tag=>tag.addEventListener("click", e=>{
       const it = rc.items[e.target.dataset.i];
@@ -1395,6 +2269,7 @@ Si tu ne peux pas lire les articles un par un, laisse "items" a un tableau vide 
         t.id = hashId(t) + "_" + Math.random().toString(36).slice(2,7);
         if(it.optType) t.optType = it.optType;
         if(it.optNote) t.optNote = it.optNote;
+        if(it.foodSub) t.foodSub = it.foodSub;
         newTx.push(t);
       });
     }
@@ -1402,6 +2277,7 @@ Si tu ne peux pas lire les articles un par un, laisse "items" a un tableau vide 
       if(total>0){
         const t = { date, description: store, amount: -Math.abs(total), category, manual:true };
         t.id = hashId(t) + "_" + Math.random().toString(36).slice(2,7);
+        if(category==="Alimentation") t.foodSub = "Autre alimentation";
         newTx.push(t);
       }
     }
@@ -1416,9 +2292,11 @@ Si tu ne peux pas lire les articles un par un, laisse "items" a un tableau vide 
     state.transactions = state.transactions.concat(newTx);
     state.transactions.sort((a,b)=> a.date<b.date?1:-1);
     await saveTransactions();
+    state.dashMonth = date.slice(0,7);
+    state.ticketsMonth = date.slice(0,7);
 
     const index = await loadReceiptsIndex();
-    const indexEntry = { id: receiptId, store, date, total, category, thumb: rc.thumbImage, createdAt: Date.now() };
+    const indexEntry = { id: receiptId, store, date, total, category, thumb: rc.thumbImage, imgHash: rc.imgHash, createdAt: Date.now() };
     index.unshift(indexEntry);
     await saveReceiptsIndex(index);
     await saveReceiptFull(receiptId, { id: receiptId, store, date, total, category, items: rc.items, fullImage: rc.fullImage, isPdf: !!rc.isPdf, createdAt: Date.now() });
@@ -1459,6 +2337,122 @@ Si tu ne peux pas lire les articles un par un, laisse "items" a un tableau vide 
         if(full) openReceiptModal(full);
       });
     });
+  }
+
+  function renderTicketsMonthNav(){
+    const months = monthsFrom(t=>!!t.receiptId);
+    const label = document.getElementById("ticketsMonthLabel");
+    const prevBtn = document.getElementById("ticketsPrevMonthBtn");
+    const nextBtn = document.getElementById("ticketsNextMonthBtn");
+    const toggleBtn = document.getElementById("ticketsToggleAllBtn");
+
+    if(months.length===0){
+      label.textContent = "";
+      prevBtn.disabled = true; nextBtn.disabled = true; toggleBtn.style.display = "none";
+      return;
+    }
+    toggleBtn.style.display = "";
+    if(!state.ticketsMonth || (state.ticketsMonth!=="all" && !months.includes(state.ticketsMonth))){
+      state.ticketsMonth = months[months.length-1];
+    }
+    const isAll = state.ticketsMonth === "all";
+    const idx = months.indexOf(state.ticketsMonth);
+    label.textContent = isAll ? "Toutes les périodes" : capitalize(monthLabel(state.ticketsMonth+"-01"));
+    prevBtn.disabled = isAll || idx<=0;
+    nextBtn.disabled = isAll || idx>=months.length-1;
+    toggleBtn.textContent = isAll ? "Voir mois par mois" : "Vue globale";
+
+    if(!prevBtn.dataset.bound){
+      prevBtn.addEventListener("click", ()=>{
+        const ms = monthsFrom(t=>!!t.receiptId);
+        const i = ms.indexOf(state.ticketsMonth);
+        if(i>0){ state.ticketsMonth = ms[i-1]; refreshTicketAnalysis(); }
+      });
+      prevBtn.dataset.bound = "1";
+    }
+    if(!nextBtn.dataset.bound){
+      nextBtn.addEventListener("click", ()=>{
+        const ms = monthsFrom(t=>!!t.receiptId);
+        const i = ms.indexOf(state.ticketsMonth);
+        if(i<ms.length-1){ state.ticketsMonth = ms[i+1]; refreshTicketAnalysis(); }
+      });
+      nextBtn.dataset.bound = "1";
+    }
+    if(!toggleBtn.dataset.bound){
+      toggleBtn.addEventListener("click", ()=>{
+        const ms = monthsFrom(t=>!!t.receiptId);
+        state.ticketsMonth = (state.ticketsMonth==="all") ? ms[ms.length-1] : "all";
+        refreshTicketAnalysis();
+      });
+      toggleBtn.dataset.bound = "1";
+    }
+  }
+  function refreshTicketAnalysis(){
+    renderTicketsMonthNav();
+    renderTicketsBreakdown();
+    renderFoodBreakdown();
+  }
+
+  function renderTicketsBreakdown(){
+    const zone = document.getElementById("ticketsBreakdown");
+    const isAll = state.ticketsMonth === "all" || !state.ticketsMonth;
+    const ticketTxs = state.transactions.filter(t=>t.receiptId && t.amount<0 && !t.neutral && (isAll || effectiveMonth(t)===state.ticketsMonth));
+    if(ticketTxs.length===0){
+      zone.innerHTML = `<div class="empty-state"><div class="glyph">🧾</div><div class="main">Aucun ticket scanné ${isAll?"pour l'instant":"ce mois-ci"}</div></div>`;
+      return;
+    }
+    const byCat = {};
+    ticketTxs.forEach(t=>{ byCat[t.category] = (byCat[t.category]||0) + (-t.amount); });
+    const catEntries = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+    const maxVal = catEntries[0][1];
+    const total = ticketTxs.reduce((s,t)=>s-t.amount,0);
+
+    let html = `<p style="font-size:12.5px; color:var(--ink-soft); margin:-8px 0 14px;">Total scanné : <strong style="color:var(--ink);">${fmt(total)}</strong></p><div class="bar-list">`;
+    catEntries.forEach(([cat,val])=>{
+      const pct = Math.max(4, Math.round((val/maxVal)*100));
+      const c = catColor(cat);
+      html += `
+        <div class="bar-row" data-cat="${escapeHtml(cat)}">
+          <div class="cat-name"><span class="cat-dot" style="background:${c};"></span>${escapeHtml(cat)}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${c};"></div></div>
+          <div class="cat-amount">${fmt(val)}</div>
+        </div>`;
+    });
+    html += `</div>`;
+    zone.innerHTML = html;
+    zone.querySelectorAll(".bar-row[data-cat]").forEach(el=>{
+      el.addEventListener("click", ()=> openCategoryDetail(el.dataset.cat, ticketTxs));
+    });
+  }
+
+  const FOOD_SUB_COLORS = ["#A9D9C5","#F5C2A8","#F0D9B5","#D9C2A8","#E3B8B8","#F5E3A8","#F3C9D6","#B7D9EC","#D3C2EC","#C9E4B5"];
+  function renderFoodBreakdown(){
+    const zone = document.getElementById("foodBreakdown");
+    const isAll = state.ticketsMonth === "all" || !state.ticketsMonth;
+    const foodTxs = state.transactions.filter(t=>t.receiptId && t.amount<0 && !t.neutral && t.category==="Alimentation" && t.foodSub && (isAll || effectiveMonth(t)===state.ticketsMonth));
+    if(foodTxs.length===0){
+      zone.innerHTML = `<div class="empty-state"><div class="glyph">🥕</div><div class="main">Pas encore de détail alimentaire ${isAll?"":"ce mois-ci"}</div>Scanne un ticket de courses pour voir apparaître viande, féculents, apéro…</div>`;
+      return;
+    }
+    const bySub = {};
+    foodTxs.forEach(t=>{ bySub[t.foodSub] = (bySub[t.foodSub]||0) + (-t.amount); });
+    const subEntries = FOOD_SUBCATEGORIES.map(s=>[s, bySub[s]||0]).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+    const maxVal = subEntries[0][1];
+    const total = foodTxs.reduce((s,t)=>s-t.amount,0);
+
+    let html = `<p style="font-size:12.5px; color:var(--ink-soft); margin:-8px 0 14px;">Total alimentation détaillée : <strong style="color:var(--ink);">${fmt(total)}</strong></p><div class="bar-list">`;
+    subEntries.forEach(([sub,val])=>{
+      const pct = Math.max(4, Math.round((val/maxVal)*100));
+      const c = FOOD_SUB_COLORS[FOOD_SUBCATEGORIES.indexOf(sub) % FOOD_SUB_COLORS.length];
+      html += `
+        <div class="bar-row" style="cursor:default;">
+          <div class="cat-name"><span class="cat-dot" style="background:${c};"></span>${escapeHtml(sub)}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${c};"></div></div>
+          <div class="cat-amount">${fmt(val)}</div>
+        </div>`;
+    });
+    html += `</div>`;
+    zone.innerHTML = html;
   }
 
   function renderOptimisationZone(){
@@ -1508,14 +2502,39 @@ Si tu ne peux pas lire les articles un par un, laisse "items" a un tableau vide 
     overlay.querySelector(".modal-close").addEventListener("click", ()=>overlay.remove());
   }
 
+  const FOOD_SUB_RENAME = { "Féculents & épicerie":"Féculents (pâtes, riz, pain)", "Produits laitiers":"Produits laitiers & œufs", "Apéro & boissons":"Apéro & alcool" };
+
   // ---------- init & events ----------
   async function init(){
     state.transactions = await loadTransactions();
     state.rules = migrateRules(await loadRules(), state.transactions);
+    state.openingBalance = await loadOpeningBalance();
+    state.foodKeywords = migrateFoodKeywords(await loadFoodKeywords());
+    await saveFoodKeywords();
+    state.transactions.forEach(t=>{
+      if(!t.manual){
+        const newCat = categorize(t.description, t.amount);
+        if(newCat!==t.category) t.category = newCat;
+        if(t.category==="Placement" && !t.placementSub) t.placementSub = derivePlacementSub(t.description);
+      }
+      if(!t.budgetMonth || t.budgetMonthAuto===true){
+        const auto = autoBudgetMonth(t);
+        if(auto){ t.budgetMonth = auto; t.budgetMonthAuto = true; }
+      }
+      if(t.foodSub && FOOD_SUB_RENAME[t.foodSub]) t.foodSub = FOOD_SUB_RENAME[t.foodSub];
+      if(t.receiptId && t.category==="Alimentation" && (!t.foodSub || t.foodSub==="Autre alimentation")){
+        const parts = t.description.split(" — ");
+        const itemName = parts.length>1 ? parts[parts.length-1] : t.description;
+        t.foodSub = guessFoodSub(itemName);
+      }
+    });
+    applyPaydayCascade(state.transactions);
     await saveRules();
     await saveTransactions();
 
+    document.querySelectorAll(".section-tabs button").forEach(b=>b.addEventListener("click", ()=>switchSection(b.dataset.section)));
     document.querySelectorAll("nav.tabs button").forEach(b=>b.addEventListener("click", ()=>switchTab(b.dataset.tab)));
+    switchSection("comptes");
 
     const dropzone = document.getElementById("dropzone");
     const fileInput = document.getElementById("fileInput");
@@ -1536,7 +2555,31 @@ Si tu ne peux pas lire les articles un par un, laisse "items" a un tableau vide 
     document.getElementById("addCatBtn").addEventListener("click", addCategory);
     document.getElementById("newCatInput").addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); addCategory(); } });
     document.getElementById("recategorizeBtn").addEventListener("click", recategorize);
-    document.getElementById("resetAllBtn").addEventListener("click", resetAll);
+    document.getElementById("aiGuessBtn").addEventListener("click", aiGuessUnknownCategories);
+    document.getElementById("obSaveBtn").addEventListener("click", async ()=>{
+      const amount = parseFloat(document.getElementById("obAmountInput").value);
+      const date = document.getElementById("obDateInput").value;
+      const obStatus = document.getElementById("obStatus");
+      if(isNaN(amount) || !date){
+        obStatus.textContent = "Indique un montant et une date valides.";
+        obStatus.className = "status-msg err";
+        return;
+      }
+      state.openingBalance = { amount, date };
+      await saveOpeningBalance(state.openingBalance);
+      obStatus.textContent = "Enregistré.";
+      obStatus.className = "status-msg ok";
+      renderDashboard();
+    });
+    document.getElementById("exportAllBtn").addEventListener("click", exportAllData);
+    document.getElementById("resetAllBtn").addEventListener("click", ()=>{
+      document.getElementById("resetConfirmZone").style.display = "block";
+      document.getElementById("resetStatus").textContent = "";
+    });
+    document.getElementById("resetConfirmBtn").addEventListener("click", resetAll);
+    document.getElementById("resetCancelBtn").addEventListener("click", ()=>{
+      document.getElementById("resetConfirmZone").style.display = "none";
+    });
 
     const receiptDropzone = document.getElementById("receiptDropzone");
     const receiptInput = document.getElementById("receiptInput");
