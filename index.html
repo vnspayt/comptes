@@ -343,7 +343,7 @@
     </div>
 
     <div class="receipt-analyzing" id="receiptAnalyzing" style="display:none;">
-      <div class="spinner"></div> Lecture du ticket en cours…
+      <div class="spinner"></div> <span id="receiptAnalyzingText">Lecture du ticket en cours…</span>
     </div>
 
     <div id="receiptReviewZone" style="display:none; margin-top:20px;">
@@ -1237,6 +1237,40 @@
   }
 
   // ---------- multi-file import (CSV text and/or PDF via API) ----------
+  async function callAnthropic(body){
+    let resp;
+    try{
+      resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method:"POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(body)
+      });
+    }catch(networkErr){
+      throw new Error("[réseau] " + (networkErr && networkErr.message ? networkErr.message : String(networkErr)));
+    }
+    if(!resp.ok){
+      let bodyText = "";
+      try{ bodyText = (await resp.text()).slice(0,200); }catch(e2){ /* ignore */ }
+      throw new Error(`[API ${resp.status}] ${bodyText || resp.statusText || "sans détail"}`);
+    }
+    let bodyText;
+    try{
+      bodyText = await resp.text();
+    }catch(readErr){
+      throw new Error("[lecture reponse] " + (readErr && readErr.message ? readErr.message : String(readErr)));
+    }
+    if(!bodyText){
+      throw new Error("[reponse vide] le serveur a renvoyé un statut OK mais un corps de réponse vide");
+    }
+    let data;
+    try{
+      data = JSON.parse(bodyText);
+    }catch(parseErr){
+      throw new Error("[JSON.parse] " + (parseErr && parseErr.message ? parseErr.message : String(parseErr)) + " — extrait: " + bodyText.slice(0,150));
+    }
+    return data;
+  }
+
   async function analyzeStatementPDF(base64){
     const prompt = `Tu lis un releve de compte bancaire francais en PDF (une ou plusieurs pages). Extrait toutes les lignes d'operations visibles, sur toutes les pages.
 Reponds UNIQUEMENT avec du texte CSV brut (pas de markdown, pas de commentaire, pas de phrase d'introduction), separateur point-virgule, une ligne d'en-tete puis une ligne par operation:
@@ -1248,20 +1282,14 @@ Regles:
 - Une ligne par operation, dans l'ordre ou elles apparaissent
 - Si le document ne contient pas de tableau d'operations, reponds uniquement avec l'en-tete et aucune ligne
 - N'invente jamais une operation ou un montant que tu ne peux pas lire clairement`;
-    const resp = await fetch("https://api.anthropic.com/v1/messages", {
-      method:"POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({
-        model:"claude-sonnet-4-6",
-        max_tokens:1000,
-        messages:[{ role:"user", content:[
-          { type:"document", source:{ type:"base64", media_type:"application/pdf", data: base64 } },
-          { type:"text", text: prompt }
-        ]}]
-      })
+    const data = await callAnthropic({
+      model:"claude-sonnet-4-6",
+      max_tokens:1000,
+      messages:[{ role:"user", content:[
+        { type:"document", source:{ type:"base64", media_type:"application/pdf", data: base64 } },
+        { type:"text", text: prompt }
+      ]}]
     });
-    if(!resp.ok) throw new Error("Erreur API "+resp.status);
-    const data = await resp.json();
     const textBlock = (data.content||[]).find(b=>b.type==="text");
     if(!textBlock) throw new Error("Reponse sans texte");
     const truncated = data.stop_reason === "max_tokens";
@@ -1918,17 +1946,11 @@ Categories : ${numbered}
 Libelles :
 ${descList}
 Reponds UNIQUEMENT avec un numero par ligne, dans le meme ordre, une ligne par libelle, rien d'autre. Si vraiment aucune categorie ne convient, reponds 0 pour cette ligne.`;
-      const resp = await fetch("https://api.anthropic.com/v1/messages", {
-        method:"POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({
-          model:"claude-sonnet-4-6",
-          max_tokens:1000,
-          messages:[{ role:"user", content:[{ type:"text", text: prompt }] }]
-        })
+      const data = await callAnthropic({
+        model:"claude-sonnet-4-6",
+        max_tokens:1000,
+        messages:[{ role:"user", content:[{ type:"text", text: prompt }] }]
       });
-      if(!resp.ok) throw new Error("Erreur API "+resp.status);
-      const data = await resp.json();
       const textBlock = (data.content||[]).find(b=>b.type==="text");
       if(!textBlock) throw new Error("Reponse sans texte");
       const nums = textBlock.text.trim().split(/\r\n|\n|\r/).map(l=>parseInt(l.trim(),10));
@@ -1955,7 +1977,8 @@ Reponds UNIQUEMENT avec un numero par ligne, dans le meme ordre, une ligne par l
       setAiGuessStatus(`${classified} transaction(s) catégorisée(s), ${newKeywords} nouveau(x) mot(s)-clé(s) retenu(s) pour la prochaine fois.`, false);
     }catch(err){
       console.error("ai guess failed", err);
-      setAiGuessStatus("La reconnaissance IA a échoué — réessaie dans un instant.", true);
+      const msg = (err && err.message) ? err.message : String(err);
+      setAiGuessStatus(`La reconnaissance IA a échoué. Détail technique : ${msg}`, true);
     }finally{
       btn.disabled = false;
     }
@@ -2183,28 +2206,28 @@ Regles :
 - Sois le plus concis possible pour lister un maximum d'articles
 - N'invente jamais un prix, un article ou un magasin que tu ne peux pas lire clairement
 - Si tu ne peux pas distinguer les articles un par un, ne mets aucune ligne d'article mais donne quand meme la ligne 1 avec le magasin, la date et le total`;
-    const resp = await fetch("https://api.anthropic.com/v1/messages", {
-      method:"POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({
-        model:"claude-sonnet-4-6",
-        max_tokens:1000,
-        messages:[{ role:"user", content:[ contentBlock, { type:"text", text: prompt } ]}]
-      })
+    const data = await callAnthropic({
+      model:"claude-sonnet-4-6",
+      max_tokens:1000,
+      messages:[{ role:"user", content:[ contentBlock, { type:"text", text: prompt } ]}]
     });
-    if(!resp.ok) throw new Error("Erreur API "+resp.status);
-    const data = await resp.json();
     const textBlock = (data.content||[]).find(b=>b.type==="text");
-    if(!textBlock) throw new Error("Reponse sans texte");
-    const raw = textBlock.text.trim().replace(/^```[a-z]*/i,"").replace(/```$/,"").trim();
-    const parsed = parseReceiptText(raw, categories);
-    if(!parsed) throw new Error("Reponse illisible");
+    if(!textBlock) throw new Error("[reponse] pas de bloc texte dans la reponse de l'IA");
+    let parsed;
+    try{
+      const raw = textBlock.text.trim().replace(/^```[a-z]*/i,"").replace(/```$/,"").trim();
+      parsed = parseReceiptText(raw, categories);
+    }catch(parseErr){
+      throw new Error("[parsing] " + (parseErr && parseErr.message ? parseErr.message : String(parseErr)));
+    }
+    if(!parsed) throw new Error("[parsing] reponse vide ou illisible");
     return parsed;
   }
 
   async function handleReceiptFile(file){
     document.getElementById("receiptReviewZone").style.display = "none";
     document.getElementById("receiptAnalyzing").style.display = "flex";
+    document.getElementById("receiptAnalyzingText").textContent = "Lecture du ticket en cours…";
     try{
       const isPdf = isPdfFile(file);
       let fullImg, thumbImg, base64;
@@ -2224,9 +2247,16 @@ Regles :
         const contentBlock = isPdf
           ? { type:"document", source:{ type:"base64", media_type:"application/pdf", data: base64 } }
           : { type:"image", source:{ type:"base64", media_type:"image/jpeg", data: base64 } };
-        extracted = await analyzeReceiptContent(contentBlock);
+        try{
+          extracted = await analyzeReceiptContent(contentBlock);
+        }catch(firstErr){
+          console.error("premiere tentative echouee, nouvel essai", firstErr);
+          const t = document.getElementById("receiptAnalyzingText");
+          if(t) t.textContent = "Première tentative échouée — nouvel essai en cours…";
+          extracted = await analyzeReceiptContent(contentBlock);
+        }
       }catch(err){
-        console.error("analyse ticket echouee", err);
+        console.error("analyse ticket echouee (apres reessai)", err);
         extracted = { store:"", date:null, total:null, category:"Autres", items:[] };
         analysisFailed = true;
         analysisErrorMsg = (err && err.message) ? err.message : String(err);
