@@ -1238,15 +1238,26 @@
 
   // ---------- multi-file import (CSV text and/or PDF via API) ----------
   async function callAnthropic(body){
+    const headers = { "Content-Type": "application/json" };
+    if(!HAS_NATIVE_STORAGE){
+      try{
+        const key = await loadApiKey();
+        if(key && key.trim()){
+          headers["x-api-key"] = key.trim();
+          headers["anthropic-version"] = "2023-06-01";
+          headers["anthropic-dangerous-direct-browser-access"] = "true";
+        }
+      }catch(keyErr){ console.error("loadApiKey failed", keyErr); }
+    }
     let resp;
     try{
       resp = await fetch("https://api.anthropic.com/v1/messages", {
         method:"POST",
-        headers: {"Content-Type": "application/json"},
+        headers,
         body: JSON.stringify(body)
       });
     }catch(networkErr){
-      throw new Error("[réseau] " + (networkErr && networkErr.message ? networkErr.message : String(networkErr)));
+      throw new Error("[réseau]" + (!HAS_NATIVE_STORAGE ? " (vérifie ta clé API dans Règles)" : "") + " " + (networkErr && networkErr.message ? networkErr.message : String(networkErr)));
     }
     if(!resp.ok){
       let bodyText = "";
