@@ -330,9 +330,14 @@
     <h2 class="panel-title">Tickets de caisse</h2>
     <p class="panel-hint">Prends en photo ou importe un ticket de caisse : le magasin, le montant et la catégorie sont lus et proposés automatiquement — tu peux corriger avant d'ajouter au registre. Les tickets restent enregistrés ici pour consultation.</p>
 
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+      <button class="btn" id="receiptCameraBtn" style="flex:1; min-width:160px;">📷 Prendre une photo</button>
+      <input type="file" id="receiptCameraInput" accept="image/*" capture="environment" style="display:none;">
+    </div>
+
     <div class="dropzone" id="receiptDropzone">
       <div class="icon">🧾</div>
-      <div class="main">Prends une photo, ou choisis une image ou un PDF de ticket</div>
+      <div class="main">…ou choisis une image ou un PDF déjà enregistré</div>
       <div class="aux">jpg, png, pdf — analysé automatiquement</div>
       <input type="file" id="receiptInput" accept="image/*,.pdf,application/pdf">
     </div>
@@ -343,6 +348,7 @@
 
     <div id="receiptReviewZone" style="display:none; margin-top:20px;">
       <div id="receiptDuplicateWarning" style="display:none;"></div>
+      <div id="receiptAnalysisErrorBanner" style="display:none;"></div>
       <div class="receipt-review-grid">
         <div id="receiptThumbWrap"></div>
         <div class="receipt-fields">
@@ -385,6 +391,16 @@
 
     <h2 class="panel-title" style="font-size:16px; margin-top:32px;">Mes tickets enregistrés</h2>
     <div class="receipt-gallery" id="receiptGallery"></div>
+
+    <div style="margin-top:16px;">
+      <button class="btn ghost small" id="clearTicketsBtn">Effacer tous mes tickets</button>
+      <div id="clearTicketsConfirmZone" style="display:none; margin-top:10px; padding:12px 14px; background:var(--rose); border-radius:9px;">
+        <p style="font-size:12.5px; color:var(--rose-text); font-weight:600; margin:0 0 10px;">Supprime définitivement tous les tickets scannés et leurs lignes associées (n'affecte pas tes relevés bancaires). Confirmer ?</p>
+        <button class="btn danger small" id="clearTicketsConfirmBtn">Oui, tout effacer</button>
+        <button class="btn ghost small" id="clearTicketsCancelBtn">Annuler</button>
+      </div>
+      <p class="status-msg" id="clearTicketsStatus" style="margin-left:0; margin-top:8px; display:block;"></p>
+    </div>
 
     <h2 class="panel-title" style="font-size:16px; margin-top:32px;">💡 Pistes d'économies</h2>
     <p class="panel-hint">Articles repérés comme « optimisables » dans tes tickets analysés — des achats où une alternative moins chère ou plus saine existe probablement.</p>
@@ -470,6 +486,17 @@
     <h2 class="panel-title" style="font-size:16px; margin-top:32px;">Sous-catégories alimentaires (pour l'analyse des tickets)</h2>
     <p class="panel-hint">Ces mots-clés servent à classer précisément les articles alimentaires de tes tickets (viande, féculents, apéro…). Ajoute-en si un article n'est pas reconnu correctement — par exemple une forme de pâtes non listée.</p>
     <div class="rules-grid" id="foodRulesGrid"></div>
+
+    <div id="standaloneApiZone" style="display:none; margin-top:20px; padding:14px 16px; background:var(--paper); border-radius:10px; border:1px solid var(--line);">
+      <p style="font-size:12.5px; font-weight:600; margin:0 0 4px;">⚙️ Version autonome (hors Claude.ai)</p>
+      <p style="font-size:11.5px; color:var(--ink-soft); margin:0 0 10px;">Cette copie tourne en dehors de l'environnement Claude — les fonctions IA (lecture de tickets, de relevés PDF, suggestion de catégories) ont besoin de ta propre clé API Anthropic pour fonctionner. Récupère-la sur <span style="font-family:monospace;">console.anthropic.com</span> → API Keys. Elle reste stockée uniquement dans ce navigateur, sur cet appareil — ne partage jamais ce fichier avec ta clé déjà remplie.</p>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        <input type="password" id="apiKeyInput" placeholder="sk-ant-..." style="flex:1; min-width:220px; border:1px solid var(--line); border-radius:8px; padding:8px 10px; font-size:13px; font-family:monospace;">
+        <button class="btn secondary small" id="apiKeySaveBtn">Enregistrer</button>
+      </div>
+      <p class="status-msg" id="apiKeyStatus" style="margin-left:0; margin-top:8px; display:block;"></p>
+      <p style="font-size:10.5px; color:var(--ink-soft); margin-top:8px;">Sans clé, tout le reste de l'appli fonctionne normalement (import CSV/QIF, catégorisation par mots-clés, tableau de bord) — seules les fonctions qui font appel à l'IA seront désactivées.</p>
+    </div>
 
     <div style="margin-top:20px; display:flex; flex-direction:column; gap:10px; align-items:flex-start;">
       <button class="btn ghost small" id="recategorizeBtn">Ré-appliquer les règles (catégories + rattachement des gros versements tardifs)</button>
@@ -572,6 +599,39 @@
     currentReceipt: null
   };
 
+  // ---------- storage: use Claude's native window.storage when available (inside claude.ai),
+  // otherwise fall back to a localStorage-backed shim with the same interface — this lets the
+  // exact same file run standalone (e.g. hosted on GitHub Pages) with no code changes elsewhere.
+  const HAS_NATIVE_STORAGE = (typeof window.storage !== "undefined");
+  if(!HAS_NATIVE_STORAGE){
+    const LS_PREFIX = "carnet:";
+    window.storage = {
+      async get(key, shared){
+        const raw = localStorage.getItem(LS_PREFIX+key);
+        if(raw===null) throw new Error("key not found: "+key);
+        return { key, value: raw, shared: !!shared };
+      },
+      async set(key, value, shared){
+        localStorage.setItem(LS_PREFIX+key, value);
+        return { key, value, shared: !!shared };
+      },
+      async delete(key, shared){
+        const existed = localStorage.getItem(LS_PREFIX+key) !== null;
+        localStorage.removeItem(LS_PREFIX+key);
+        return { key, deleted: existed, shared: !!shared };
+      },
+      async list(prefix, shared){
+        const keys = [];
+        const fullPrefix = LS_PREFIX + (prefix||"");
+        for(let i=0;i<localStorage.length;i++){
+          const k = localStorage.key(i);
+          if(k && k.startsWith(fullPrefix)) keys.push(k.slice(LS_PREFIX.length));
+        }
+        return { keys, prefix, shared: !!shared };
+      }
+    };
+  }
+
   // ---------- storage helpers ----------
   async function loadJSON(key, fallback){
     try{
@@ -582,6 +642,20 @@
   async function saveJSON(key, value){
     try{ await window.storage.set(key, JSON.stringify(value), false); }
     catch(e){ console.error("save failed", key, e); }
+  }
+  async function loadApiKey(){ return loadJSON("anthropicApiKey", ""); }
+  async function saveApiKeyValue(k){ await saveJSON("anthropicApiKey", k); }
+  async function anthropicHeaders(){
+    const base = { "Content-Type": "application/json" };
+    if(!HAS_NATIVE_STORAGE){
+      const key = await loadApiKey();
+      if(key){
+        base["x-api-key"] = key;
+        base["anthropic-version"] = "2023-06-01";
+        base["anthropic-dangerous-direct-browser-access"] = "true";
+      }
+    }
+    return base;
   }
   async function loadTransactions(){ return loadJSON("transactions", []); }
   async function saveTransactions(){ await saveJSON("transactions", state.transactions); }
@@ -1176,7 +1250,7 @@ Regles:
 - N'invente jamais une operation ou un montant que tu ne peux pas lire clairement`;
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
       method:"POST",
-      headers:{"Content-Type":"application/json"},
+      headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
         model:"claude-sonnet-4-6",
         max_tokens:1000,
@@ -1846,7 +1920,7 @@ ${descList}
 Reponds UNIQUEMENT avec un numero par ligne, dans le meme ordre, une ligne par libelle, rien d'autre. Si vraiment aucune categorie ne convient, reponds 0 pour cette ligne.`;
       const resp = await fetch("https://api.anthropic.com/v1/messages", {
         method:"POST",
-        headers:{"Content-Type":"application/json"},
+        headers: {"Content-Type": "application/json"},
         body: JSON.stringify({
           model:"claude-sonnet-4-6",
           max_tokens:1000,
@@ -1885,6 +1959,41 @@ Reponds UNIQUEMENT avec un numero par ligne, dans le meme ordre, une ligne par l
     }finally{
       btn.disabled = false;
     }
+  }
+
+  async function clearAllTickets(){
+    const status = document.getElementById("clearTicketsStatus");
+    status.textContent = "";
+    let failures = 0;
+    async function tryDelete(key){
+      try{ await window.storage.delete(key, false); }
+      catch(e){ failures++; console.error("clear tickets: failed to delete", key, e); }
+    }
+    try{
+      const idx = await loadReceiptsIndex();
+      for(const r of idx){ await tryDelete("receipt:"+r.id); }
+    }catch(e){ failures++; }
+    try{
+      const listed = await window.storage.list("receipt:", false);
+      if(listed && listed.keys){ for(const k of listed.keys){ await tryDelete(k); } }
+    }catch(e){ /* none left, fine */ }
+    await tryDelete("receipts_index");
+
+    const removedCount = state.transactions.filter(t=>t.receiptId).length;
+    state.transactions = state.transactions.filter(t=>!t.receiptId);
+    await saveTransactions();
+
+    document.getElementById("clearTicketsConfirmZone").style.display = "none";
+    if(failures>0){
+      status.textContent = `Effacement partiel — ${failures} suppression(s) ont échoué. Réessaie.`;
+      status.className = "status-msg err";
+    } else {
+      status.textContent = `${removedCount} ligne(s) et tous les tickets enregistrés ont été effacés.`;
+      status.className = "status-msg ok";
+    }
+    renderReceiptGallery();
+    refreshTicketAnalysis();
+    renderOptimisationZone();
   }
 
   async function resetAll(){
@@ -2076,7 +2185,7 @@ Regles :
 - Si tu ne peux pas distinguer les articles un par un, ne mets aucune ligne d'article mais donne quand meme la ligne 1 avec le magasin, la date et le total`;
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
       method:"POST",
-      headers:{"Content-Type":"application/json"},
+      headers: {"Content-Type": "application/json"},
       body: JSON.stringify({
         model:"claude-sonnet-4-6",
         max_tokens:1000,
@@ -2110,7 +2219,7 @@ Regles :
         ]);
         base64 = dataUrlToBase64(fullImg);
       }
-      let extracted, analysisFailed = false;
+      let extracted, analysisFailed = false, analysisErrorMsg = "";
       try{
         const contentBlock = isPdf
           ? { type:"document", source:{ type:"base64", media_type:"application/pdf", data: base64 } }
@@ -2120,6 +2229,7 @@ Regles :
         console.error("analyse ticket echouee", err);
         extracted = { store:"", date:null, total:null, category:"Autres", items:[] };
         analysisFailed = true;
+        analysisErrorMsg = (err && err.message) ? err.message : String(err);
       }
       state.currentReceipt = {
         fullImage: fullImg, thumbImage: thumbImg, isPdf,
@@ -2143,9 +2253,14 @@ Regles :
         state.currentReceipt.imgHash, state.currentReceipt.store, state.currentReceipt.date, state.currentReceipt.total
       );
       renderReceiptReview();
+      const errBanner = document.getElementById("receiptAnalysisErrorBanner");
       if(analysisFailed){
-        document.getElementById("receiptStatus").textContent = "La lecture automatique a échoué — remplis les champs à la main.";
-        document.getElementById("receiptStatus").className = "status-msg err";
+        errBanner.className = "dup-warning";
+        errBanner.style.display = "block";
+        errBanner.innerHTML = `⚠️ La lecture automatique a échoué — remplis les champs à la main.<br><span style="font-family:monospace; font-size:11px; opacity:.85;">Détail technique : ${escapeHtml(analysisErrorMsg)}</span>`;
+      } else {
+        errBanner.style.display = "none";
+        errBanner.innerHTML = "";
       }
     }catch(e){
       console.error(e);
@@ -2200,7 +2315,7 @@ Regles :
     const catOptions = Object.keys(state.rules);
     wrap.innerHTML = rc.items.map((it,i)=>{
       const isOpt = it.optType === "optimisable";
-      const isFood = it.category === "Alimentation";
+      if(!FOOD_SUBCATEGORIES.includes(it.foodSub)) it.foodSub = "Autre alimentation";
       return `
       <div class="item-row" data-i="${i}">
         <input type="checkbox" class="item-include" data-i="${i}" ${it.include!==false?"checked":""}>
@@ -2209,9 +2324,9 @@ Regles :
             <input type="text" class="item-name" data-i="${i}" value="${escapeHtml(it.name)}" style="flex:1;">
             <span class="item-tag ${isOpt?'optimisable':'essentiel'}" data-i="${i}" title="Cliquer pour changer">${isOpt?'💡 optimisable':'✓ essentiel'}</span>
           </div>
-          ${isFood ? `<select class="item-foodsub" data-i="${i}" style="margin-top:5px; font-size:11px; padding:3px 6px;">
+          <select class="item-foodsub" data-i="${i}" style="margin-top:5px; font-size:11px; padding:3px 6px;">
             ${FOOD_SUBCATEGORIES.map(s=>`<option value="${s}" ${s===it.foodSub?"selected":""}>${s}</option>`).join("")}
-          </select>` : ""}
+          </select>
           ${isOpt && it.optNote ? `<div class="item-note">${escapeHtml(it.optNote)}</div>` : ""}
         </div>
         <input type="number" step="0.01" class="item-amount" data-i="${i}" value="${it.amount}">
@@ -2269,7 +2384,7 @@ Regles :
         t.id = hashId(t) + "_" + Math.random().toString(36).slice(2,7);
         if(it.optType) t.optType = it.optType;
         if(it.optNote) t.optNote = it.optNote;
-        if(it.foodSub) t.foodSub = it.foodSub;
+        if(it.foodSub && it.category==="Alimentation") t.foodSub = it.foodSub;
         newTx.push(t);
       });
     }
@@ -2306,6 +2421,8 @@ Regles :
     setTimeout(()=>{
       cancelReceiptReview();
       renderReceiptGallery();
+      refreshTicketAnalysis();
+      renderOptimisationZone();
     }, 900);
   }
 
@@ -2554,6 +2671,17 @@ Regles :
     document.getElementById("exportCsvBtn").addEventListener("click", exportCsv);
     document.getElementById("addCatBtn").addEventListener("click", addCategory);
     document.getElementById("newCatInput").addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); addCategory(); } });
+    if(!HAS_NATIVE_STORAGE){
+      document.getElementById("standaloneApiZone").style.display = "block";
+      loadApiKey().then(k=>{ if(k) document.getElementById("apiKeyInput").value = k; });
+      document.getElementById("apiKeySaveBtn").addEventListener("click", async ()=>{
+        const val = document.getElementById("apiKeyInput").value.trim();
+        await saveApiKeyValue(val);
+        const st = document.getElementById("apiKeyStatus");
+        st.textContent = val ? "Clé enregistrée." : "Clé effacée.";
+        st.className = "status-msg ok";
+      });
+    }
     document.getElementById("recategorizeBtn").addEventListener("click", recategorize);
     document.getElementById("aiGuessBtn").addEventListener("click", aiGuessUnknownCategories);
     document.getElementById("obSaveBtn").addEventListener("click", async ()=>{
@@ -2580,9 +2708,21 @@ Regles :
     document.getElementById("resetCancelBtn").addEventListener("click", ()=>{
       document.getElementById("resetConfirmZone").style.display = "none";
     });
+    document.getElementById("clearTicketsBtn").addEventListener("click", ()=>{
+      document.getElementById("clearTicketsConfirmZone").style.display = "block";
+      document.getElementById("clearTicketsStatus").textContent = "";
+    });
+    document.getElementById("clearTicketsConfirmBtn").addEventListener("click", clearAllTickets);
+    document.getElementById("clearTicketsCancelBtn").addEventListener("click", ()=>{
+      document.getElementById("clearTicketsConfirmZone").style.display = "none";
+    });
 
     const receiptDropzone = document.getElementById("receiptDropzone");
     const receiptInput = document.getElementById("receiptInput");
+    const receiptCameraBtn = document.getElementById("receiptCameraBtn");
+    const receiptCameraInput = document.getElementById("receiptCameraInput");
+    receiptCameraBtn.addEventListener("click", ()=>receiptCameraInput.click());
+    receiptCameraInput.addEventListener("change", e=>{ if(e.target.files[0]) handleReceiptFile(e.target.files[0]); e.target.value=""; });
     receiptDropzone.addEventListener("click", ()=>receiptInput.click());
     receiptInput.addEventListener("change", e=>{ if(e.target.files[0]) handleReceiptFile(e.target.files[0]); });
     ["dragenter","dragover"].forEach(ev=>receiptDropzone.addEventListener(ev, e=>{ e.preventDefault(); receiptDropzone.classList.add("drag"); }));
