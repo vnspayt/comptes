@@ -425,7 +425,7 @@
     "Logement & charges": ["edf","engie","veolia","suez","loyer","syndic","eau de","assurance habitation","gaz de","sepa assurance","saur"],
     "Pret immobilier": ["pret immobilier"],
     "Telecom & internet": ["orange","sfr","bouygues telecom","free mobile","free telecom","red by sfr"],
-    "Transport": ["total energies","esso","shell","bp ","sncf","ratp","uber","blablacar","parking","autoroute","peage","station service","garage","citroen","cofiroute","vinci autoroutes","aprr","area ","sanef","asf","escota","eurotunnel","navigo","keolis","flixbus","ouigo","trainline","indigo park","q-park","onepark","controle technique","paybyphone","matmut","sapn","flahauto","avia","indigo","sa alis"],
+    "Transport": ["total energies","esso","shell","bp ","sncf","ratp","uber","blablacar","parking","autoroute","peage","station service","garage","citroen","cofiroute","vinci autoroutes","aprr","area ","sanef","asf","escota","eurotunnel","navigo","keolis","flixbus","ouigo","trainline","indigo park","q-park","onepark","controle technique","paybyphone","matmut","sapn","flahauto","avia","indigo","sa alis","alicorne"],
     "Sante": ["pharmacie","medecin","docteur","dentiste","mutuelle","hopital","chu","laboratoire","radiologie","kine","osteopathe","opticien","optic 2000","afflelou","generale optique","audioprothesiste","pharm","cpam"],
     "Psychologue & therapie": ["psychologue","psychotherap","psy ","therapeute","seance psy","cabinet psy","deville"],
     "Hygiene & beaute": ["sephora","marionnaud","nocibe","yves rocher","parapharmacie","institut beaute","coiffeur","coiffure","un temps de paus"],
@@ -469,6 +469,27 @@
     if(norm.includes("nicolas")) return "Nicolas";
     if(norm.includes("vanessa")) return "Vanessa";
     return null;
+  }
+
+  const TRANSPORT_SUBCATS = ["Essence & carburant","Péage & autoroute","Stationnement","Assurance auto","Réparation & entretien","Transports en commun","Autre transport"];
+  const TRANSPORT_KEYWORDS = {
+    "Essence & carburant": ["total energies","esso","shell","bp ","station service","avia","essodac"],
+    "Péage & autoroute": ["cofiroute","vinci autoroutes","aprr","area ","sanef","asf","escota","eurotunnel","sa alis","alicorne","autoroute","peage","sapn"],
+    "Stationnement": ["paybyphone","indigo","q-park","onepark","parking"],
+    "Assurance auto": ["matmut"],
+    "Réparation & entretien": ["flahauto","garage","controle technique"],
+    "Transports en commun": ["sncf","ratp","uber","blablacar","navigo","keolis","flixbus","ouigo","trainline"]
+  };
+  function guessTransportSub(desc){
+    const norm = normalize(desc);
+    let best = null, bestLen = 0;
+    for(const [sub, kws] of Object.entries(TRANSPORT_KEYWORDS)){
+      for(const kw of kws){
+        const kwNorm = normalize(kw).trim();
+        if(kwNorm && norm.includes(kwNorm) && kwNorm.length>bestLen){ best = sub; bestLen = kwNorm.length; }
+      }
+    }
+    return best || "Autre transport";
   }
 
   // Some bank exports (this LCL QIF, at least) leave loan installments with zero label at all —
@@ -596,7 +617,7 @@
       "Logement & charges": ["sepa assurance","saur"],
       "Pret immobilier": ["pret immobilier"],
       "Psychologue & therapie": ["deville"],
-      "Transport": ["paybyphone","matmut","sapn","flahauto","avia","indigo","sa alis"],
+      "Transport": ["paybyphone","matmut","sapn","flahauto","avia","indigo","sa alis","alicorne"],
       "Sante": ["pharm","cpam"],
       "Hygiene & beaute": ["un temps de paus"],
       "Tabac & vapotage": ["cigusto","crf caen - rots"],
@@ -921,21 +942,23 @@
     const expenseLines = inCatAll.filter(t=>t.amount<0);
     const creditLines = inCatAll.filter(t=>t.amount>0);
     const netTotal = inCatAll.reduce((s,t)=>s+t.amount, 0);
+    const useTransportSub = cat==="Transport";
     const groups = {};
     expenseLines.forEach(t=>{
-      const label = merchantLabel(t.description);
+      const label = useTransportSub ? (t.transportSub || guessTransportSub(t.description)) : merchantLabel(t.description);
       groups[label] = (groups[label]||0) + (-t.amount);
     });
     const groupEntries = Object.entries(groups).sort((a,b)=>b[1]-a[1]);
     const maxVal = groupEntries.length ? groupEntries[0][1] : 1;
     const color = catColor(cat);
 
-    let groupsHtml = groupEntries.map(([label,val])=>{
+    let groupsHtml = groupEntries.map(([label,val],idx)=>{
       const pct = Math.max(4, Math.round((val/maxVal)*100));
+      const barColor = useTransportSub ? CATEGORY_COLORS[idx % CATEGORY_COLORS.length] : color;
       return `
         <div class="bar-row" style="grid-template-columns:130px 1fr 85px;">
           <div class="cat-name">${escapeHtml(label)}</div>
-          <div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${color};"></div></div>
+          <div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${barColor};"></div></div>
           <div class="cat-amount">${fmt(val)}</div>
         </div>`;
     }).join("");
@@ -1089,6 +1112,7 @@
       t.id = dedupeKey + "_" + Math.random().toString(36).slice(2,7);
       t.category = categorize(desc, amount);
       if(t.category==="Placement") t.placementSub = derivePlacementSub(desc);
+      if(t.category==="Transport") t.transportSub = guessTransportSub(desc);
       t.manual = false;
       const auto = autoBudgetMonth(t);
       if(auto){ t.budgetMonth = auto; t.budgetMonthAuto = true; }
@@ -1683,6 +1707,7 @@ Regles:
         const newCat = categorize(t.description, t.amount);
         if(newCat!==t.category){ t.category=newCat; changed++; }
         if(t.category==="Placement" && !t.placementSub) t.placementSub = derivePlacementSub(t.description);
+        if(t.category==="Transport" && !t.transportSub) t.transportSub = guessTransportSub(t.description);
       }
       if(!t.budgetMonth || t.budgetMonthAuto===true){
         const auto = autoBudgetMonth(t);
@@ -1804,6 +1829,7 @@ Reponds UNIQUEMENT avec un numero par ligne, dans le meme ordre, une ligne par l
         const newCat = categorize(t.description, t.amount);
         if(newCat!==t.category) t.category = newCat;
         if(t.category==="Placement" && !t.placementSub) t.placementSub = derivePlacementSub(t.description);
+        if(t.category==="Transport" && !t.transportSub) t.transportSub = guessTransportSub(t.description);
       }
       if(!t.budgetMonth || t.budgetMonthAuto===true){
         const auto = autoBudgetMonth(t);
