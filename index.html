@@ -477,7 +477,7 @@
     "Péage & autoroute": ["cofiroute","vinci autoroutes","aprr","area ","sanef","asf","escota","eurotunnel","sa alis","alicorne","autoroute","peage","sapn"],
     "Stationnement": ["paybyphone","indigo","q-park","onepark","parking"],
     "Assurance auto": ["matmut"],
-    "Réparation & entretien": ["flahauto","garage","controle technique"],
+    "Réparation & entretien": ["flahauto","garage","controle technique","citroen"],
     "Transports en commun": ["sncf","ratp","uber","blablacar","navigo","keolis","flixbus","ouigo","trainline"]
   };
   function guessTransportSub(desc){
@@ -956,7 +956,7 @@
       const pct = Math.max(4, Math.round((val/maxVal)*100));
       const barColor = useTransportSub ? CATEGORY_COLORS[idx % CATEGORY_COLORS.length] : color;
       return `
-        <div class="bar-row" style="grid-template-columns:130px 1fr 85px;">
+        <div class="bar-row" style="grid-template-columns:130px 1fr 85px;" ${useTransportSub ? `data-sub="${escapeHtml(label)}"` : ""}>
           <div class="cat-name">${escapeHtml(label)}</div>
           <div class="bar-track"><div class="bar-fill" style="width:${pct}%; background:${barColor};"></div></div>
           <div class="cat-amount">${fmt(val)}</div>
@@ -973,9 +973,13 @@
         </tbody></table></div>`;
     }
 
-    const rowsHtml = inCatAll.slice().sort((a,b)=>a.date<b.date?1:-1).map(t=>`
-      <tr><td>${displayDate(t.date)}</td><td>${escapeHtml(t.description)}</td><td class="num-cell ${t.amount<0?'amount-neg':'amount-pos'}">${t.amount>=0?"+":""}${fmt(t.amount)}</td></tr>
-    `).join("");
+    function buildRowsHtml(list){
+      return list.slice().sort((a,b)=>a.date<b.date?1:-1).map(t=>`
+        <tr><td>${displayDate(t.date)}</td><td>${escapeHtml(t.description)}</td><td class="num-cell ${t.amount<0?'amount-neg':'amount-pos'}">${t.amount>=0?"+":""}${fmt(t.amount)}</td></tr>
+      `).join("");
+    }
+    const rowsHtml = buildRowsHtml(inCatAll);
+    const filterHint = useTransportSub ? `<p id="subFilterHint" style="font-size:11.5px; color:var(--ink-soft); margin:8px 0 0; display:none;"></p>` : "";
 
     const overlay = document.createElement("div");
     overlay.className = "modal-overlay";
@@ -983,14 +987,33 @@
       <div class="modal-box" style="max-width:560px; width:100%; text-align:left;">
         <button class="modal-close">×</button>
         <h2 class="panel-title" style="display:flex; align-items:center; gap:9px;"><span class="cat-dot" style="background:${color};"></span>${escapeHtml(cat)}</h2>
-        <p class="panel-hint" style="margin-bottom:14px;">${inCatAll.length} opération${inCatAll.length>1?"s":""} — net ${fmt(-netTotal)}${creditLines.length>0?" (après remboursements)":""}</p>
+        <p class="panel-hint" style="margin-bottom:14px;">${inCatAll.length} opération${inCatAll.length>1?"s":""} — net ${fmt(-netTotal)}${creditLines.length>0?" (après remboursements)":""}${useTransportSub ? " · clique une ligne ci-dessous pour filtrer le détail" : ""}</p>
         ${groupEntries.length ? `<div class="bar-list" style="margin-bottom:20px;">${groupsHtml}</div>` : ""}
         ${creditsHtml}
-        <div class="preview-wrap"><table><thead><tr><th>Date</th><th>Libellé</th><th style="text-align:right;">Montant</th></tr></thead><tbody>${rowsHtml || `<tr><td colspan="3" style="text-align:center; padding:20px; color:var(--ink-soft);">Aucune opération.</td></tr>`}</tbody></table></div>
+        ${filterHint}
+        <div class="preview-wrap"><table><thead><tr><th>Date</th><th>Libellé</th><th style="text-align:right;">Montant</th></tr></thead><tbody id="catDetailRows">${rowsHtml || `<tr><td colspan="3" style="text-align:center; padding:20px; color:var(--ink-soft);">Aucune opération.</td></tr>`}</tbody></table></div>
       </div>`;
     document.body.appendChild(overlay);
     overlay.addEventListener("click", e=>{ if(e.target===overlay) overlay.remove(); });
     overlay.querySelector(".modal-close").addEventListener("click", ()=>overlay.remove());
+    if(useTransportSub){
+      overlay.querySelectorAll(".bar-row[data-sub]").forEach(row=>{
+        row.style.cursor = "pointer";
+        row.addEventListener("click", ()=>{
+          const sub = row.dataset.sub;
+          const filtered = expenseLines.filter(t=>(t.transportSub || guessTransportSub(t.description))===sub);
+          overlay.querySelector("#catDetailRows").innerHTML = buildRowsHtml(filtered);
+          const hint = overlay.querySelector("#subFilterHint");
+          hint.style.display = "block";
+          hint.innerHTML = `Filtré sur « ${escapeHtml(sub)} » (${filtered.length} ligne${filtered.length>1?"s":""}) — <span style="text-decoration:underline; cursor:pointer;" id="clearSubFilter">tout réafficher</span>`;
+          overlay.querySelector("#clearSubFilter").addEventListener("click", e=>{
+            e.stopPropagation();
+            overlay.querySelector("#catDetailRows").innerHTML = rowsHtml;
+            hint.style.display = "none";
+          });
+        });
+      });
+    }
   }
 
   function buildPieSVG(catEntries, total){
