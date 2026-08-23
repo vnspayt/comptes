@@ -401,10 +401,6 @@
       </div>
       <p class="status-msg" id="clearTicketsStatus" style="margin-left:0; margin-top:8px; display:block;"></p>
     </div>
-
-    <h2 class="panel-title" style="font-size:16px; margin-top:32px;">💡 Pistes d'économies</h2>
-    <p class="panel-hint">Articles repérés comme « optimisables » dans tes tickets analysés — des achats où une alternative moins chère ou plus saine existe probablement.</p>
-    <div id="optimisationZone"></div>
   </section>
 
   <!-- DASHBOARD -->
@@ -856,6 +852,51 @@
     return `rgba(${r},${g},${b},${alpha})`;
   }
   function dataUrlToBase64(dataUrl){ return dataUrl.split(",")[1]; }
+
+  // ---------- local OCR fallback (no AI key needed) ----------
+  function loadScriptOnce(src){
+    return new Promise((resolve,reject)=>{
+      if(document.querySelector(`script[src="${src}"]`)){ resolve(); return; }
+      const s = document.createElement("script");
+      s.src = src;
+      s.onload = ()=>resolve();
+      s.onerror = ()=>reject(new Error("echec de chargement: "+src));
+      document.head.appendChild(s);
+    });
+  }
+  async function ocrImageText(dataUrl, progressCb){
+    if(typeof window.Tesseract === "undefined"){
+      await loadScriptOnce("https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js");
+    }
+    const result = await window.Tesseract.recognize(dataUrl, "fra", {
+      logger: info => { if(progressCb && info.status==="recognizing text") progressCb(Math.round((info.progress||0)*100)); }
+    });
+    return result.data.text || "";
+  }
+  const OCR_SKIP_WORDS = ["total","sous-total","sous total","tva","especes","carte bancaire","cb ","rendu","a payer","net a payer","remise","ticket de caisse","merci","bienvenue","date","heure","caisse n","siret","tel ","tva intracom","numero"];
+  function parseOcrReceipt(text){
+    const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+    const items = [];
+    let total = null, store = "";
+    if(lines.length>0) store = lines[0].replace(/[^a-zA-ZÀ-ÿ0-9 '\-]/g,"").trim().slice(0,40);
+    lines.forEach(line=>{
+      const priceMatch = line.match(/(\d{1,4}[,.]\d{2})\s*(?:€|eur)?\s*$/i);
+      if(!priceMatch) return;
+      const amount = parseAmount(priceMatch[1]);
+      if(isNaN(amount) || amount<=0 || amount>500) return;
+      const lower = normalize(line);
+      if(OCR_SKIP_WORDS.some(w=>lower.includes(w))){
+        if(lower.includes("total") && !lower.includes("sous")) total = amount;
+        return;
+      }
+      let name = line.slice(0, priceMatch.index).trim().replace(/[*xX]\s*\d+\s*$/,"").trim();
+      name = name.replace(/^\d+\s*/,"").trim();
+      if(name.length<2) return;
+      items.push({ name: name.slice(0,40), amount });
+    });
+    return { store, total, items };
+  }
+
   function readFileAsDataURL(file){
     return new Promise((resolve,reject)=>{
       const r = new FileReader();
@@ -944,6 +985,17 @@
       }
     }
     return words[0] || "Autre";
+  }
+
+  async function learnCategoryKeyword(desc, category){
+    if(!category || category==="Autres" || !desc) return;
+    const kw = normalize(merchantLabel(desc));
+    if(kw.length<3) return;
+    if(!state.rules[category]) state.rules[category] = [];
+    if(!state.rules[category].includes(kw)){
+      state.rules[category].push(kw);
+      await saveRules();
+    }
   }
 
   function openSavingsDetail(placementTx){
@@ -1118,7 +1170,7 @@
     if(tab==="transactions") renderTransactions();
     if(tab==="ticketdetail") renderTicketDetail();
     if(tab==="rules"){ renderRules(); renderFoodRules(); }
-    if(tab==="tickets"){ renderReceiptGallery(); renderOptimisationZone(); refreshTicketAnalysis(); }
+    if(tab==="tickets"){ renderReceiptGallery(); refreshTicketAnalysis(); }
   }
 
   // ---------- import status / progress ----------
@@ -1656,7 +1708,11 @@ Regles:
       sel.addEventListener("change", async e=>{
         const id = e.target.dataset.id;
         const tx = state.transactions.find(t=>t.id===id);
-        if(tx){ tx.category=e.target.value; tx.manual=true; await saveTransactions(); renderTxTable(); }
+        if(tx){
+          tx.category=e.target.value; tx.manual=true;
+          await learnCategoryKeyword(tx.description, tx.category);
+          await saveTransactions(); renderTxTable();
+        }
       });
     });
     body.querySelectorAll(".del-btn").forEach(btn=>{
@@ -1699,9 +1755,9 @@ Regles:
     }
     const catOptions = Object.keys(state.rules);
     body.innerHTML = rows.map(t=>`
-      <tr class="${t.optType==='optimisable'?'manual':''}" data-id="${t.id}">
+      <tr data-id="${t.id}">
         <td>${displayDate(t.date)}</td>
-        <td>${escapeHtml(t.description)}${t.optType==='optimisable' ? ` <span class="item-tag optimisable" style="cursor:default;">💡</span>` : ""}</td>
+        <td>${escapeHtml(t.description)}</td>
         <td class="cat-cell">
           <select class="ticket-cat-select" data-id="${t.id}">
             ${catOptions.map(c=>`<option value="${c}" ${c===t.category?"selected":""}>${c}</option>`).join("")}
@@ -1720,11 +1776,13 @@ Regles:
         const tx = state.transactions.find(t=>t.id===id);
         if(tx){
           tx.category=e.target.value; tx.manual=true;
+          const parts = tx.description.split(" — ");
+          const itemName = parts.length>1 ? parts[parts.length-1] : tx.description;
           if(tx.category==="Alimentation" && !tx.foodSub){
-            const parts = tx.description.split(" — ");
-            tx.foodSub = guessFoodSub(parts.length>1 ? parts[parts.length-1] : tx.description);
+            tx.foodSub = guessFoodSub(itemName);
           }
           if(tx.category!=="Alimentation") tx.foodSub = null;
+          await learnCategoryKeyword(itemName, tx.category);
           await saveTransactions(); renderTicketDetailTable();
         }
       });
@@ -1781,7 +1839,7 @@ Regles:
 
   function exportAllData(){
     const rows = state.transactions.slice().sort((a,b)=> a.date<b.date?-1:1);
-    let csv = "id;date;date_effective;libelle;categorie;montant;neutre;manuel;mois_rattachement;mois_rattachement_auto;source;sous_categorie_alimentaire;type_optimisation;note_optimisation\n";
+    let csv = "id;date;date_effective;libelle;categorie;montant;neutre;manuel;mois_rattachement;mois_rattachement_auto;source;sous_categorie_alimentaire\n";
     rows.forEach(t=>{
       const esc = s => `"${(s||"").toString().replace(/"/g,'""')}"`;
       csv += [
@@ -1796,9 +1854,7 @@ Regles:
         t.budgetMonth || "",
         t.budgetMonthAuto ? "Oui" : "Non",
         t.receiptId ? "Ticket" : "Releve",
-        esc(t.foodSub || ""),
-        esc(t.optType || ""),
-        esc(t.optNote || "")
+        esc(t.foodSub || "")
       ].join(";") + "\n";
     });
     if(state.openingBalance){
@@ -2027,7 +2083,6 @@ Reponds UNIQUEMENT avec un numero par ligne, dans le meme ordre, une ligne par l
     }
     renderReceiptGallery();
     refreshTicketAnalysis();
-    renderOptimisationZone();
   }
 
   async function resetAll(){
@@ -2181,14 +2236,12 @@ Reponds UNIQUEMENT avec un numero par ligne, dans le meme ordre, une ligne par l
       const amount = parseAmount(p[1]);
       if(!name || isNaN(amount)) continue;
       const itemCat = catAt(p[2]);
-      const eFlag = (p[3]||"").trim()==="1";
-      const note = (p[4]||"").trim();
       let foodSub = null;
       if(itemCat==="Alimentation"){
         const local = guessFoodSub(name);
-        foodSub = local!=="Autre alimentation" ? local : (subAt(p[5]) || "Autre alimentation");
+        foodSub = local!=="Autre alimentation" ? local : (subAt(p[3]) || "Autre alimentation");
       }
-      items.push({ name, amount, category: itemCat, optType: eFlag?"optimisable":"essentiel", optNote: eFlag?note:"", foodSub });
+      items.push({ name, amount, category: itemCat, foodSub });
     }
     return { store, date, total: isNaN(total)?null:total, category, items };
   }
@@ -2198,7 +2251,7 @@ Reponds UNIQUEMENT avec un numero par ligne, dans le meme ordre, une ligne par l
     const numbered = categories.map((c,i)=>`${i+1}=${c}`).join(", ");
     const prompt = `Tu lis un ticket de caisse francais (image ou PDF). Reponds UNIQUEMENT en texte brut, sans JSON, sans markdown, format exact :
 Ligne 1 : MAGASIN;DATE;TOTAL;CAT
-Puis une ligne par article achete : NOM;PRIX;CAT;E;NOTE;SUBCAT
+Puis une ligne par article achete : NOM;PRIX;CAT;SUBCAT
 
 Categories disponibles, indique uniquement le numero dans CAT : ${numbered}
 SUBCAT : uniquement si CAT correspond a Alimentation, une seule lettre parmi F/V/L/P/S/U/G/B/A/X (sinon laisse vide) :
@@ -2211,8 +2264,6 @@ Regles :
 - CAT : numero de categorie le plus pertinent (pour le magasin en ligne 1, pour chaque article ensuite) — toujours un NUMERO. Les produits d'entretien/menagers (lessive, vaisselle, papier toilette, produits nettoyants, eponges...) vont dans "Entretien & menager", jamais dans "Alimentation"
 - NOM : nom court de l'article, 2 a 4 mots
 - PRIX : prix de l'article, nombre avec virgule decimale
-- E : 1 si l'article est alimentaire ou d'hygiene et qu'une alternative moins chere ou plus saine existe probablement (produits ultra-transformes, biscuits/sodas industriels, marques premium evitables sur un produit basique...), sinon 0
-- NOTE : uniquement si E=1, suggestion tres courte et concrete (5 mots maximum), sinon laisse vide
 - SUBCAT : toujours une LETTRE (jamais un chiffre), uniquement quand CAT=Alimentation
 - Sois le plus concis possible pour lister un maximum d'articles
 - N'invente jamais un prix, un article ou un magasin que tu ne peux pas lire clairement
@@ -2254,6 +2305,31 @@ Regles :
         base64 = dataUrlToBase64(fullImg);
       }
       let extracted, analysisFailed = false, analysisErrorMsg = "";
+      let skipAnalysis = false, usedOcr = false, ocrFailed = false;
+      if(!HAS_NATIVE_STORAGE){
+        try{ const k = await loadApiKey(); skipAnalysis = !k || !k.trim(); }catch(e){ skipAnalysis = true; }
+      }
+      if(skipAnalysis && !isPdf){
+        const t = document.getElementById("receiptAnalyzingText");
+        try{
+          if(t) t.textContent = "Reconnaissance de texte locale (peut prendre 10-20s la première fois)…";
+          const text = await ocrImageText(fullImg, pct=>{ if(t) t.textContent = `Reconnaissance de texte locale… ${pct}%`; });
+          const ocrResult = parseOcrReceipt(text);
+          extracted = {
+            store: ocrResult.store, date: null,
+            total: ocrResult.total,
+            category: "Autres",
+            items: ocrResult.items.map(it=>({ name: it.name, amount: it.amount, category: guessFoodSub(it.name)!=="Autre alimentation" ? "Alimentation" : "Autres" }))
+          };
+          usedOcr = true;
+        }catch(ocrErr){
+          console.error("ocr locale echouee", ocrErr);
+          ocrFailed = true;
+          extracted = { store:"", date:null, total:null, category:"Autres", items:[] };
+        }
+      } else if(skipAnalysis){
+        extracted = { store:"", date:null, total:null, category:"Autres", items:[] };
+      } else {
       try{
         const contentBlock = isPdf
           ? { type:"document", source:{ type:"base64", media_type:"application/pdf", data: base64 } }
@@ -2272,6 +2348,7 @@ Regles :
         analysisFailed = true;
         analysisErrorMsg = (err && err.message) ? err.message : String(err);
       }
+      }
       state.currentReceipt = {
         fullImage: fullImg, thumbImage: thumbImg, isPdf,
         imgHash: hashString(base64),
@@ -2284,8 +2361,6 @@ Regles :
           return {
             name: it.name || "", amount: (typeof it.amount==="number")?it.amount:0,
             category: resolvedCat,
-            optType: it.optType === "optimisable" ? "optimisable" : "essentiel",
-            optNote: it.optNote || "",
             foodSub: resolvedCat==="Alimentation" ? (FOOD_SUBCATEGORIES.includes(it.foodSub) ? it.foodSub : guessFoodSub(it.name||"")) : null
           };
         }) : []
@@ -2295,7 +2370,21 @@ Regles :
       );
       renderReceiptReview();
       const errBanner = document.getElementById("receiptAnalysisErrorBanner");
-      if(analysisFailed){
+      if(usedOcr){
+        errBanner.className = "dup-warning";
+        errBanner.style.display = "block";
+        errBanner.innerHTML = `🔎 Lecture locale (sans IA) — les articles ci-dessous sont une estimation automatique, vérifie-les et corrige si besoin (le magasin, la date et les catégories précises ne sont pas toujours bien détectés).`;
+      } else if(skipAnalysis && ocrFailed){
+        errBanner.className = "dup-warning";
+        errBanner.style.display = "block";
+        errBanner.innerHTML = `✏️ La reconnaissance locale n'a rien pu extraire de cette image — remplis les champs à la main.`;
+      } else if(skipAnalysis){
+        errBanner.className = "dup-warning";
+        errBanner.style.display = "block";
+        errBanner.innerHTML = isPdf
+          ? `✏️ Les PDF ne sont pas lisibles sans clé API (la reconnaissance locale ne fonctionne que sur les photos) — remplis les champs à la main.`
+          : `✏️ Pas de clé API configurée — remplis les champs ci-dessous, la catégorie et la sous-catégorie alimentaire se suggèrent automatiquement au fur et à mesure.`;
+      } else if(analysisFailed){
         errBanner.className = "dup-warning";
         errBanner.style.display = "block";
         errBanner.innerHTML = `⚠️ La lecture automatique a échoué — remplis les champs à la main.<br><span style="font-family:monospace; font-size:11px; opacity:.85;">Détail technique : ${escapeHtml(analysisErrorMsg)}</span>`;
@@ -2341,6 +2430,15 @@ Regles :
     document.getElementById("rfTotal").value = rc.total;
     const catSel = document.getElementById("rfCategory");
     catSel.innerHTML = Object.keys(state.rules).map(c=>`<option value="${escapeHtml(c)}" ${c===rc.category?"selected":""}>${c}</option>`).join("");
+    if(!catSel.dataset.storeListenerBound){
+      document.getElementById("rfStore").addEventListener("blur", e=>{
+        const name = e.target.value.trim();
+        if(!name) return;
+        const guessed = categorize(name);
+        if(guessed !== "Autres") catSel.value = guessed;
+      });
+      catSel.dataset.storeListenerBound = "1";
+    }
     document.getElementById("rfItemize").checked = rc.items.length>0;
     renderItemsList();
     document.getElementById("receiptStatus").textContent = "";
@@ -2355,20 +2453,15 @@ Regles :
     }
     const catOptions = Object.keys(state.rules);
     wrap.innerHTML = rc.items.map((it,i)=>{
-      const isOpt = it.optType === "optimisable";
       if(!FOOD_SUBCATEGORIES.includes(it.foodSub)) it.foodSub = "Autre alimentation";
       return `
       <div class="item-row" data-i="${i}">
         <input type="checkbox" class="item-include" data-i="${i}" ${it.include!==false?"checked":""}>
         <div>
-          <div style="display:flex; align-items:center; gap:6px;">
-            <input type="text" class="item-name" data-i="${i}" value="${escapeHtml(it.name)}" style="flex:1;">
-            <span class="item-tag ${isOpt?'optimisable':'essentiel'}" data-i="${i}" title="Cliquer pour changer">${isOpt?'💡 optimisable':'✓ essentiel'}</span>
-          </div>
+          <input type="text" class="item-name" data-i="${i}" value="${escapeHtml(it.name)}" style="width:100%;">
           <select class="item-foodsub" data-i="${i}" style="margin-top:5px; font-size:11px; padding:3px 6px;">
             ${FOOD_SUBCATEGORIES.map(s=>`<option value="${s}" ${s===it.foodSub?"selected":""}>${s}</option>`).join("")}
           </select>
-          ${isOpt && it.optNote ? `<div class="item-note">${escapeHtml(it.optNote)}</div>` : ""}
         </div>
         <input type="number" step="0.01" class="item-amount" data-i="${i}" value="${it.amount}">
         <select class="item-cat" data-i="${i}">
@@ -2379,6 +2472,21 @@ Regles :
     `;
     }).join("");
     wrap.querySelectorAll(".item-name").forEach(inp=>inp.addEventListener("input", e=>{ rc.items[e.target.dataset.i].name = e.target.value; }));
+    wrap.querySelectorAll(".item-name").forEach(inp=>inp.addEventListener("blur", e=>{
+      const i = e.target.dataset.i;
+      const it = rc.items[i];
+      const name = it.name.trim();
+      if(!name) return;
+      const row = e.target.closest(".item-row");
+      const catSel = row.querySelector(".item-cat");
+      const subSel = row.querySelector(".item-foodsub");
+      const guessedSub = guessFoodSub(name);
+      if(guessedSub !== "Autre alimentation"){
+        it.foodSub = guessedSub;
+        if(it.category !== "Alimentation"){ it.category = "Alimentation"; if(catSel) catSel.value = "Alimentation"; }
+        if(subSel) subSel.value = guessedSub;
+      }
+    }));
     wrap.querySelectorAll(".item-amount").forEach(inp=>inp.addEventListener("input", e=>{ rc.items[e.target.dataset.i].amount = parseFloat(e.target.value)||0; }));
     wrap.querySelectorAll(".item-foodsub").forEach(sel=>sel.addEventListener("change", e=>{
       const it = rc.items[e.target.dataset.i];
@@ -2389,14 +2497,10 @@ Regles :
       const it = rc.items[e.target.dataset.i];
       it.category = e.target.value;
       if(it.category==="Alimentation" && !it.foodSub) it.foodSub = guessFoodSub(it.name||"");
+      learnCategoryKeyword(it.name, it.category);
       renderItemsList();
     }));
     wrap.querySelectorAll(".item-include").forEach(chk=>chk.addEventListener("change", e=>{ rc.items[e.target.dataset.i].include = e.target.checked; }));
-    wrap.querySelectorAll(".item-tag").forEach(tag=>tag.addEventListener("click", e=>{
-      const it = rc.items[e.target.dataset.i];
-      it.optType = (it.optType==="optimisable") ? "essentiel" : "optimisable";
-      renderItemsList();
-    }));
     wrap.querySelectorAll(".rm-item").forEach(btn=>btn.addEventListener("click", e=>{
       rc.items.splice(parseInt(e.target.dataset.i,10),1);
       renderItemsList();
@@ -2405,7 +2509,7 @@ Regles :
 
   function addManualItem(){
     const rc = state.currentReceipt;
-    rc.items.push({ name:"", amount:0, category:"Autres", include:true, optType:"essentiel", optNote:"" });
+    rc.items.push({ name:"", amount:0, category:"Autres", include:true });
     document.getElementById("rfItemize").checked = true;
     renderItemsList();
   }
@@ -2423,8 +2527,6 @@ Regles :
       rc.items.filter(it=>it.include!==false && it.amount>0).forEach(it=>{
         const t = { date, description: `${store} — ${it.name||"article"}`, amount: -Math.abs(it.amount), category: it.category, manual:true };
         t.id = hashId(t) + "_" + Math.random().toString(36).slice(2,7);
-        if(it.optType) t.optType = it.optType;
-        if(it.optNote) t.optNote = it.optNote;
         if(it.foodSub && it.category==="Alimentation") t.foodSub = it.foodSub;
         newTx.push(t);
       });
@@ -2463,7 +2565,6 @@ Regles :
       cancelReceiptReview();
       renderReceiptGallery();
       refreshTicketAnalysis();
-      renderOptimisationZone();
     }, 900);
   }
 
@@ -2613,33 +2714,7 @@ Regles :
     zone.innerHTML = html;
   }
 
-  function renderOptimisationZone(){
-    const zone = document.getElementById("optimisationZone");
-    const flagged = state.transactions
-      .filter(t=>t.optType==="optimisable")
-      .sort((a,b)=> a.date<b.date?1:-1);
 
-    if(flagged.length===0){
-      zone.innerHTML = `<div class="empty-state"><div class="glyph">✨</div><div class="main">Rien de particulier à optimiser pour l'instant</div>Analyse tes tickets alimentaires pour voir apparaître des pistes ici.</div>`;
-      return;
-    }
-
-    const total = flagged.reduce((s,t)=>s-t.amount,0);
-    let html = `<div class="kpi-row" style="margin-bottom:18px;">
-      <div class="kpi expense"><div class="label">Total repéré comme optimisable</div><div class="value">${fmt(total)}</div></div>
-    </div>`;
-    html += `<div class="preview-wrap"><table><thead><tr><th>Date</th><th>Article</th><th>Suggestion</th><th style="text-align:right;">Montant</th></tr></thead><tbody>`;
-    flagged.forEach(t=>{
-      html += `<tr>
-        <td>${displayDate(t.date)}</td>
-        <td>${escapeHtml(t.description)}</td>
-        <td style="color:var(--butter-text); font-size:12.5px;">${escapeHtml(t.optNote||"")}</td>
-        <td class="num-cell amount-neg">${fmt(t.amount)}</td>
-      </tr>`;
-    });
-    html += `</tbody></table></div>`;
-    zone.innerHTML = html;
-  }
 
   function openReceiptModal(record){
     const overlay = document.createElement("div");
