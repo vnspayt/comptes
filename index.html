@@ -417,22 +417,23 @@
 (function(){
   "use strict";
 
-  const CATEGORY_COLORS = ["#D3C2EC","#A9D9C5","#F5C2A8","#B7D9EC","#F5E3A8","#F3C9D6","#C9E4B5","#E8C6E0","#B8CFE0","#F0D9B5","#C7B8E8","#A8D8D8","#E3B8B8","#CFE0A8","#D8C7E8","#F6C9A8","#A8C9E8","#D9C2A8","#C2ECD3","#ECC2D9","#C9D9F0","#D3ECC2","#ECD3C2","#C2D3EC"];
+  const CATEGORY_COLORS = ["#D3C2EC","#A9D9C5","#F5C2A8","#B7D9EC","#F5E3A8","#F3C9D6","#C9E4B5","#E8C6E0","#B8CFE0","#F0D9B5","#C7B8E8","#A8D8D8","#E3B8B8","#CFE0A8","#D8C7E8","#F6C9A8","#A8C9E8","#D9C2A8","#C2ECD3","#ECC2D9","#C9D9F0","#D3ECC2","#ECD3C2","#C2D3EC","#D9ECC2"];
 
   const INCOME_CATEGORIES = new Set(["Revenus","Recettes exceptionnelles"]);
   const DEFAULT_RULES = {
-    "Alimentation": ["carrefour","leclerc","intermarche","super u","systeme u","lidl","aldi","casino","monoprix","biocoop","grand frais","boulangerie","boucherie","primeur","franprix","cora","auchan","picard","monop","naturalia","leader price","netto","match","cocci market","proxi","vival","spar","g20","boulangeri","aux delices de s","alimentation"],
+    "Alimentation": ["carrefour","leclerc","intermarche","super u","systeme u","lidl","aldi","casino","monoprix","biocoop","grand frais","boucherie","primeur","franprix","cora","auchan","picard","monop","naturalia","leader price","netto","match","cocci market","proxi","vival","spar","g20","alimentation"],
     "Logement & charges": ["edf","engie","veolia","suez","loyer","syndic","eau de","assurance habitation","gaz de","sepa assurance","saur"],
     "Pret immobilier": ["pret immobilier"],
     "Telecom & internet": ["orange","sfr","bouygues telecom","free mobile","free telecom","red by sfr"],
     "Transport": ["total energies","esso","shell","bp ","sncf","ratp","uber","blablacar","parking","autoroute","peage","station service","garage","citroen","cofiroute","vinci autoroutes","aprr","area ","sanef","asf","escota","eurotunnel","navigo","keolis","flixbus","ouigo","trainline","indigo park","q-park","onepark","controle technique","paybyphone","matmut","sapn","flahauto","avia","indigo","sa alis"],
     "Sante": ["pharmacie","medecin","docteur","dentiste","mutuelle","hopital","chu","laboratoire","radiologie","kine","osteopathe","opticien","optic 2000","afflelou","generale optique","audioprothesiste","pharm","cpam"],
-    "Psychologue & therapie": ["psychologue","psychotherap","psy ","therapeute","seance psy","cabinet psy"],
-    "Hygiene & beaute": ["sephora","marionnaud","nocibe","yves rocher","parapharmacie","institut beaute","coiffeur","coiffure"],
-    "Tabac & vapotage": ["tabac","bureau de tabac","vap ","vapote","e-liquide","eliquide","cigarette electronique"],
-    "Abonnements & loisirs": ["netflix","spotify","amazon prime","disney","canal+","cinema","fnac","decathlon","steam","playstation","apple.com/bill","google play","xbox","nintendo eshop","basic fit","salle de sport","anthropic","cafe des images","equita","caen pisc"],
-    "Restaurant & sorties": ["restaurant","brasserie","mcdonald","kfc","burger","pizza","sushi","brioche doree","subway","dominos","o'tacos","moholicious","kebab","tire bouchon"],
-    "Enfant": ["ecole","creche","cantine","babilou","vetement enfant","ptit club","institutionsaintjosep","cache-cache","kiabi","tape a l'oeil","jouet","ec directe st jo","smyths toys"],
+    "Psychologue & therapie": ["psychologue","psychotherap","psy ","therapeute","seance psy","cabinet psy","deville"],
+    "Hygiene & beaute": ["sephora","marionnaud","nocibe","yves rocher","parapharmacie","institut beaute","coiffeur","coiffure","un temps de paus"],
+    "Tabac & vapotage": ["tabac","bureau de tabac","vap ","vapote","e-liquide","eliquide","cigarette electronique","cigusto","crf caen - rots"],
+    "Abonnements & loisirs": ["netflix","spotify","amazon prime","disney","canal+","cinema","fnac","decathlon","steam","playstation","apple.com/bill","google play","xbox","nintendo eshop","basic fit","salle de sport","anthropic","cafe des images","equita","caen pisc","pisc cvert"],
+    "Restaurant & sorties": ["restaurant","brasserie","mcdonald","macdo","kfc","burger","pizza","sushi","brioche doree","subway","dominos","o'tacos","moholicious","kebab","tire bouchon","boulangerie","boulangeri","boulan","blacher","ange ","mb rots","aux delices de s","distridrinks","quick","polaris"],
+    "Enfant": ["ecole","creche","cantine","babilou","vetement enfant","ptit club","institutionsaintjosep","jouet","ec directe st jo","smyths toys"],
+    "Vetement": ["kiabi","gemo","cache-cache","tape a l'oeil","intersport","go sport","courir ","besson chaussures","eram","zara","h&m","celio","jules ","promod","camaieu","kaporal","pimkie","undiz","devred","la halle","etam","okaidi","orchestra","vertbaudet","jennyfer","bershka","pull&bear"],
     "Jardin & animaux": ["jardiland","gamm vert","botanic","animalerie","veterinaire","truffaut","clinique vet","vetoophtalmo"],
     "Mobilier": ["ikea","but ","conforama","maisons du monde","fly ","meubles"],
     "Deco": ["zara home","hema","centrakor","cultura deco","saint maclou"],
@@ -456,7 +457,10 @@
     { keywords: ["nicolas roussel"], maxAmount: -1500, category: "Placement" },
     // Any Octavia-labelled transfer is always savings, whatever the amount — checked before the generic "économie" keyword
     // so it doesn't get stolen by Recettes exceptionnelles.
-    { keywords: ["octavia"], category: "Placement" }
+    { keywords: ["octavia"], category: "Placement" },
+    // A large CPAM/mutuelle payment (>400€) is sick-leave income (indemnités journalières), not a routine health reimbursement.
+    { keywords: ["cpam"], minAmount: 400, category: "Revenus" },
+    { keywords: ["mutuelle"], minAmount: 400, category: "Revenus" }
   ];
   const PLACEMENT_SUBCATS = ["Nicolas","Vanessa","Octavia"];
   function derivePlacementSub(desc){
@@ -588,24 +592,36 @@
     // Merge in newly-recognized merchant keywords for categories that already existed on this install
     if(!rules["Pret immobilier"]) rules["Pret immobilier"] = DEFAULT_RULES["Pret immobilier"].slice();
     const KEYWORD_ADDITIONS = {
-      "Alimentation": ["boulangeri","aux delices de s","alimentation"],
+      "Alimentation": ["alimentation"],
       "Logement & charges": ["sepa assurance","saur"],
       "Pret immobilier": ["pret immobilier"],
+      "Psychologue & therapie": ["deville"],
       "Transport": ["paybyphone","matmut","sapn","flahauto","avia","indigo","sa alis"],
       "Sante": ["pharm","cpam"],
-      "Restaurant & sorties": ["moholicious","kebab","tire bouchon"],
-      "Enfant": ["ptit club","institutionsaintjosep","cache-cache","kiabi","tape a l'oeil","jouet","ec directe st jo","smyths toys"],
+      "Hygiene & beaute": ["un temps de paus"],
+      "Tabac & vapotage": ["cigusto","crf caen - rots"],
+      "Restaurant & sorties": ["moholicious","kebab","tire bouchon","boulangerie","boulangeri","boulan","blacher","ange ","mb rots","aux delices de s","distridrinks","quick","macdo","polaris"],
+      "Enfant": ["ptit club","institutionsaintjosep","jouet","ec directe st jo","smyths toys"],
+      "Vetement": ["kiabi","gemo","cache-cache","tape a l'oeil","intersport","go sport","courir ","besson chaussures","eram","zara","h&m","celio","jules ","promod","camaieu","kaporal","pimkie","undiz","devred","la halle","etam","okaidi","orchestra","vertbaudet","jennyfer","bershka","pull&bear"],
       "Jardin & animaux": ["clinique vet","vetoophtalmo"],
       "Deco": ["saint maclou"],
       "Divers / petits achats": ["lydia"],
       "Travaux": ["budget travaux"],
-      "Abonnements & loisirs": ["anthropic","cafe des images","equita","caen pisc"],
+      "Abonnements & loisirs": ["anthropic","cafe des images","equita","caen pisc","pisc cvert"],
       "Banque & frais": ["kereis","cotisation mensuelle","caci non life","assurance moyen de paiement"],
       "Impots & administration": ["drfip"],
       "Revenus": ["agence schneider","prime nr","cci region normandie"],
       "Recettes exceptionnelles": ["economie","avance nr"],
       "Placement": ["octavia"]
     };
+    // Bakeries and clothing brands were previously (wrongly) filed elsewhere — pull them out first.
+    ["boulangerie","boulangeri","aux delices de s"].forEach(kw=>{
+      if(rules["Alimentation"]) rules["Alimentation"] = rules["Alimentation"].filter(k=>k!==kw);
+    });
+    ["kiabi","cache-cache","tape a l'oeil","intersport"].forEach(kw=>{
+      if(rules["Enfant"]) rules["Enfant"] = rules["Enfant"].filter(k=>k!==kw);
+      if(rules["Alimentation"]) rules["Alimentation"] = rules["Alimentation"].filter(k=>k!==kw);
+    });
     // Prime NR was initially guessed as an occasional top-up; confirmed to be a real work bonus — move it to Revenus
     if(rules["Recettes exceptionnelles"] && rules["Recettes exceptionnelles"].includes("prime nr")){
       rules["Recettes exceptionnelles"] = rules["Recettes exceptionnelles"].filter(k=>k!=="prime nr");
@@ -778,6 +794,12 @@
       if(rule.maxAmount!==undefined && amount > rule.maxAmount) continue;
       if(!rule.keywords.every(kw => norm.includes(normalize(kw)))) continue;
       return rule.category;
+    }
+    // A round number + 1 centime (e.g. 45,01€), over 20€, at Cora or Carrefour: almost always a fuel pump purchase
+    // at the supermarket's attached station (per-litre pricing rounds this way), not groceries.
+    if(typeof amount === "number" && (norm.includes("cora") || norm.includes("carrefour"))){
+      const absAmt = Math.abs(amount);
+      if(absAmt > 20 && Math.round(absAmt*100) % 100 === 1) return "Transport";
     }
     for(const [cat, kws] of Object.entries(state.rules)){
       for(const kw of kws){
