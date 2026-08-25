@@ -417,31 +417,32 @@
 (function(){
   "use strict";
 
-  const CATEGORY_COLORS = ["#D3C2EC","#A9D9C5","#F5C2A8","#B7D9EC","#F5E3A8","#F3C9D6","#C9E4B5","#E8C6E0","#B8CFE0","#F0D9B5","#C7B8E8","#A8D8D8","#E3B8B8","#CFE0A8","#D8C7E8","#F6C9A8","#A8C9E8","#D9C2A8","#C2ECD3","#ECC2D9","#C9D9F0","#D3ECC2","#ECD3C2","#C2D3EC","#D9ECC2"];
+  const CATEGORY_COLORS = ["#D3C2EC","#A9D9C5","#F5C2A8","#B7D9EC","#F5E3A8","#F3C9D6","#C9E4B5","#E8C6E0","#B8CFE0","#F0D9B5","#C7B8E8","#A8D8D8","#E3B8B8","#CFE0A8","#D8C7E8","#F6C9A8","#A8C9E8","#D9C2A8","#C2ECD3","#ECC2D9","#C9D9F0","#D3ECC2","#ECD3C2","#C2D3EC","#D9ECC2","#ECC2C9"];
 
   const INCOME_CATEGORIES = new Set(["Revenus","Recettes exceptionnelles"]);
+  const FIXED_CHARGE_CATEGORIES = new Set(["Pret immobilier","Logement & charges","Telecom & internet","Banque & frais","Impots & administration"]);
   const DEFAULT_RULES = {
     "Alimentation": ["carrefour","leclerc","intermarche","super u","systeme u","lidl","aldi","casino","monoprix","biocoop","grand frais","boucherie","primeur","franprix","cora","auchan","picard","monop","naturalia","leader price","netto","match","cocci market","proxi","vival","spar","g20","alimentation"],
     "Logement & charges": ["edf","engie","veolia","suez","loyer","syndic","eau de","assurance habitation","gaz de","sepa assurance","saur"],
-    "Pret immobilier": ["pret immobilier"],
+    "Pret immobilier": ["pret immobilier","kereis","caci non life","assurance emprunteur"],
     "Telecom & internet": ["orange","sfr","bouygues telecom","free mobile","free telecom","red by sfr"],
-    "Transport": ["total energies","esso","shell","bp ","sncf","ratp","uber","blablacar","parking","autoroute","peage","station service","garage","citroen","cofiroute","vinci autoroutes","aprr","area ","sanef","asf","escota","eurotunnel","navigo","keolis","flixbus","ouigo","trainline","indigo park","q-park","onepark","controle technique","paybyphone","matmut","sapn","flahauto","avia","indigo","sa alis","alicorne"],
-    "Sante": ["pharmacie","medecin","docteur","dentiste","mutuelle","hopital","chu","laboratoire","radiologie","kine","osteopathe","opticien","optic 2000","afflelou","generale optique","audioprothesiste","pharm","cpam"],
+    "Transport": ["total energies","esso","shell","bp ","sncf","ratp","uber","blablacar","parking","autoroute","peage","station service","garage","citroen","cofiroute","vinci autoroutes","aprr","area ","sanef","asf","escota","eurotunnel","navigo","keolis","flixbus","ouigo","trainline","indigo park","q-park","onepark","controle technique","paybyphone","matmut","sapn","flahauto","avia","indigo","sa alis","alicorne","stationnement centre ville","forf web","forf p.stat","forfait post stationnement","dekra","twisto","sorecaut"],
+    "Sante": ["pharmacie","medecin","docteur","dentiste","mutuelle","hopital","chu","laboratoire","radiologie","kine","osteopathe","opticien","optic 2000","afflelou","generale optique","audioprothesiste","pharm","cpam"," dr ","de schevrel","le blay","imagerie","saint martin"],
     "Psychologue & therapie": ["psychologue","psychotherap","psy ","therapeute","seance psy","cabinet psy","deville"],
     "Hygiene & beaute": ["sephora","marionnaud","nocibe","yves rocher","parapharmacie","institut beaute","coiffeur","coiffure","un temps de paus"],
     "Tabac & vapotage": ["tabac","bureau de tabac","vap ","vapote","e-liquide","eliquide","cigarette electronique","cigusto","crf caen - rots"],
     "Abonnements & loisirs": ["netflix","spotify","amazon prime","disney","canal+","cinema","fnac","decathlon","steam","playstation","apple.com/bill","google play","xbox","nintendo eshop","basic fit","salle de sport","anthropic","cafe des images","equita","caen pisc","pisc cvert"],
-    "Restaurant & sorties": ["restaurant","brasserie","mcdonald","macdo","kfc","burger","pizza","sushi","brioche doree","subway","dominos","o'tacos","moholicious","kebab","tire bouchon","boulangerie","boulangeri","boulan","blacher","ange ","mb rots","aux delices de s","distridrinks","quick","polaris"],
-    "Enfant": ["ecole","creche","cantine","babilou","vetement enfant","ptit club","institutionsaintjosep","jouet","ec directe st jo","smyths toys"],
-    "Vetement": ["kiabi","gemo","cache-cache","tape a l'oeil","intersport","go sport","courir ","besson chaussures","eram","zara","h&m","celio","jules ","promod","camaieu","kaporal","pimkie","undiz","devred","la halle","etam","okaidi","orchestra","vertbaudet","jennyfer","bershka","pull&bear"],
+    "Restaurant & sorties": ["restaurant","brasserie","mcdonald","macdo","kfc","burger","pizza","sushi","brioche doree","subway","dominos","o'tacos","moholicious","kebab","tire bouchon","boulangerie","boulangeri","boulan","blacher","ange ","mb rots","aux delices de s","distridrinks","quick","polaris","fabrik","papa jerry","the people","keys","pause fringale","maxicoffee","fringale","le trappist","columbus","intuition gourm"],
+    "Enfant": ["ecole","creche","cantine","babilou","vetement enfant","ptit club","institutionsaintjosep","jouet","ec directe st jo","smyths toys","institution sainte ma"],
+    "Vetement": ["kiabi","gemo","cache-cache","tape a l'oeil","intersport","go sport","courir ","besson chaussures","eram","zara","h&m","celio","jules ","promod","camaieu","kaporal","pimkie","undiz","devred","la halle","etam","okaidi","orchestra","vertbaudet","jennyfer","bershka","pull&bear","chaussea","mie paulette"],
     "Jardin & animaux": ["jardiland","gamm vert","botanic","animalerie","veterinaire","truffaut","clinique vet","vetoophtalmo"],
     "Mobilier": ["ikea","but ","conforama","maisons du monde","fly ","meubles"],
     "Deco": ["zara home","hema","centrakor","cultura deco","saint maclou"],
     "Divers / petits achats": ["action ","gifi","stokomani","noz ","lydia"],
     "Entretien & menager": [],
     "Travaux": ["leroy merlin","castorama","brico depot","bricomarche","weldom","point p","gedimat","peinture","materiaux","plombier","electricien","macon","artisan","devis travaux","budget travaux"],
-    "Banque & frais": ["cotisation carte","frais de tenue","agios","commission","frais bancaires","assurance emprunteur","kereis","cotisation mensuelle","caci non life","assurance moyen de paiement"],
-    "Impots & administration": ["impots","tresor public","dgfip","urssaf","caf ","drfip"],
+    "Banque & frais": ["cotisation carte","frais de tenue","agios","commission","frais bancaires","cotisation mensuelle","assurance moyen de paiement","frais cb"],
+    "Impots & administration": ["impots","tresor public","dgfip","urssaf","caf ","drfip","direction generale"],
     "Revenus": ["virement salaire","salaire","caisse d'allocations","vir sepa recu","remboursement","france travail","pole emploi","agence schneider","prime nr","cci region normandie"],
     "Recettes exceptionnelles": ["economie","avance nr"],
     "Placement": [],
@@ -460,7 +461,11 @@
     { keywords: ["octavia"], category: "Placement" },
     // A large CPAM/mutuelle payment (>400€) is sick-leave income (indemnités journalières), not a routine health reimbursement.
     { keywords: ["cpam"], minAmount: 400, category: "Revenus" },
-    { keywords: ["mutuelle"], minAmount: 400, category: "Revenus" }
+    { keywords: ["mutuelle"], minAmount: 400, category: "Revenus" },
+    // Specific Cora/Carrefour fuel-pump terminal signatures — confirmed fuel purchases, not groceries.
+    { keywords: ["mp*dac cora"], category: "Transport" },
+    { keywords: ["mp*carrefour"], category: "Transport" },
+    { keywords: ["carrefour cn"], category: "Transport" }
   ];
   const PLACEMENT_SUBCATS = ["Nicolas","Vanessa","Octavia"];
   function derivePlacementSub(desc){
@@ -471,14 +476,15 @@
     return null;
   }
 
-  const TRANSPORT_SUBCATS = ["Essence & carburant","Péage & autoroute","Stationnement","Assurance auto","Réparation & entretien","Transports en commun","Autre transport"];
+  const TRANSPORT_SUBCATS = ["Essence & carburant","Péage & autoroute","Stationnement","Amendes","Assurance auto","Réparation & entretien","Transports en commun","Autre transport"];
   const TRANSPORT_KEYWORDS = {
-    "Essence & carburant": ["total energies","esso","shell","bp ","station service","avia","essodac"],
+    "Essence & carburant": ["total energies","esso","shell","bp ","station service","avia","essodac","mp*dac cora","mp*carrefour","carrefour cn"],
     "Péage & autoroute": ["cofiroute","vinci autoroutes","aprr","area ","sanef","asf","escota","eurotunnel","sa alis","alicorne","autoroute","peage","sapn"],
-    "Stationnement": ["paybyphone","indigo","q-park","onepark","parking"],
+    "Stationnement": ["paybyphone","indigo","q-park","onepark","parking","stationnement centre ville"],
+    "Amendes": ["forf web","forf p.stat","forfait post stationnement"],
     "Assurance auto": ["matmut"],
-    "Réparation & entretien": ["flahauto","garage","controle technique","citroen"],
-    "Transports en commun": ["sncf","ratp","uber","blablacar","navigo","keolis","flixbus","ouigo","trainline"]
+    "Réparation & entretien": ["flahauto","garage","controle technique","citroen","dekra","sorecaut"],
+    "Transports en commun": ["sncf","ratp","uber","blablacar","navigo","keolis","flixbus","ouigo","trainline","twisto"]
   };
   function guessTransportSub(desc){
     const norm = normalize(desc);
@@ -506,6 +512,7 @@
     tab: "import",
     section: "comptes",
     dashMonth: null,
+    dashYear: null,
     ticketsMonth: null,
     openingBalance: null,
     foodKeywords: null,
@@ -615,26 +622,35 @@
     const KEYWORD_ADDITIONS = {
       "Alimentation": ["alimentation"],
       "Logement & charges": ["sepa assurance","saur"],
-      "Pret immobilier": ["pret immobilier"],
+      "Pret immobilier": ["pret immobilier","kereis","caci non life","assurance emprunteur"],
       "Psychologue & therapie": ["deville"],
-      "Transport": ["paybyphone","matmut","sapn","flahauto","avia","indigo","sa alis","alicorne"],
-      "Sante": ["pharm","cpam"],
+      "Transport": ["paybyphone","matmut","sapn","flahauto","avia","indigo","sa alis","alicorne","stationnement centre ville","forf web","forf p.stat","forfait post stationnement","dekra","twisto","sorecaut"],
+      "Sante": ["pharm","cpam"," dr ","de schevrel","le blay","imagerie","saint martin"],
       "Hygiene & beaute": ["un temps de paus"],
       "Tabac & vapotage": ["cigusto","crf caen - rots"],
-      "Restaurant & sorties": ["moholicious","kebab","tire bouchon","boulangerie","boulangeri","boulan","blacher","ange ","mb rots","aux delices de s","distridrinks","quick","macdo","polaris"],
-      "Enfant": ["ptit club","institutionsaintjosep","jouet","ec directe st jo","smyths toys"],
-      "Vetement": ["kiabi","gemo","cache-cache","tape a l'oeil","intersport","go sport","courir ","besson chaussures","eram","zara","h&m","celio","jules ","promod","camaieu","kaporal","pimkie","undiz","devred","la halle","etam","okaidi","orchestra","vertbaudet","jennyfer","bershka","pull&bear"],
+      "Restaurant & sorties": ["moholicious","kebab","tire bouchon","boulangerie","boulangeri","boulan","blacher","ange ","mb rots","aux delices de s","distridrinks","quick","macdo","polaris","fabrik","papa jerry","the people","keys","pause fringale","maxicoffee","fringale","le trappist","columbus","intuition gourm"],
+      "Enfant": ["ptit club","institutionsaintjosep","jouet","ec directe st jo","smyths toys","institution sainte ma"],
+      "Vetement": ["kiabi","gemo","cache-cache","tape a l'oeil","intersport","go sport","courir ","besson chaussures","eram","zara","h&m","celio","jules ","promod","camaieu","kaporal","pimkie","undiz","devred","la halle","etam","okaidi","orchestra","vertbaudet","jennyfer","bershka","pull&bear","chaussea","mie paulette"],
       "Jardin & animaux": ["clinique vet","vetoophtalmo"],
       "Deco": ["saint maclou"],
       "Divers / petits achats": ["lydia"],
       "Travaux": ["budget travaux"],
       "Abonnements & loisirs": ["anthropic","cafe des images","equita","caen pisc","pisc cvert"],
-      "Banque & frais": ["kereis","cotisation mensuelle","caci non life","assurance moyen de paiement"],
-      "Impots & administration": ["drfip"],
+      "Banque & frais": ["cotisation mensuelle","assurance moyen de paiement","frais cb"],
+      "Impots & administration": ["drfip","direction generale"],
       "Revenus": ["agence schneider","prime nr","cci region normandie"],
       "Recettes exceptionnelles": ["economie","avance nr"],
       "Placement": ["octavia"]
     };
+    // Amendes was briefly a standalone category — folded back into Transport as a subcategory instead.
+    if(rules["Amendes"]) delete rules["Amendes"];
+    transactions.forEach(t=>{
+      if(t.category==="Amendes"){ t.category = "Transport"; t.transportSub = "Amendes"; }
+    });
+    // Loan insurance was previously filed under Banque & frais — it's really part of the mortgage cost.
+    ["kereis","caci non life","assurance emprunteur"].forEach(kw=>{
+      if(rules["Banque & frais"]) rules["Banque & frais"] = rules["Banque & frais"].filter(k=>k!==kw);
+    });
     // Bakeries and clothing brands were previously (wrongly) filed elsewhere — pull them out first.
     ["boulangerie","boulangeri","aux delices de s"].forEach(kw=>{
       if(rules["Alimentation"]) rules["Alimentation"] = rules["Alimentation"].filter(k=>k!==kw);
@@ -1358,11 +1374,18 @@ Regles:
   function renderDashboardContent(months){
     const container = document.getElementById("dashboardContent");
     const isAll = state.dashMonth === "all";
+    const years = Array.from(new Set(months.map(m=>m.slice(0,4)))).sort();
+    if(isAll && (!state.dashYear || !years.includes(state.dashYear))){
+      state.dashYear = months[months.length-1].slice(0,4);
+    }
     const idx = months.indexOf(state.dashMonth);
+    const yIdx = years.indexOf(state.dashYear);
 
     let navHtml = `<div class="month-nav">`;
     if(isAll){
-      navHtml += `<div class="label">Toutes les périodes</div>`;
+      navHtml += `<button class="btn ghost round" id="prevYearBtn" ${yIdx<=0?"disabled":""}>‹</button>`;
+      navHtml += `<div class="label">Année ${state.dashYear}</div>`;
+      navHtml += `<button class="btn ghost round" id="nextYearBtn" ${yIdx>=years.length-1?"disabled":""}>›</button>`;
       navHtml += `<button class="btn ghost small toggle-all" id="toggleAllBtn">Voir mois par mois</button>`;
     } else {
       navHtml += `<button class="btn ghost round" id="prevMonthBtn" ${idx<=0?"disabled":""}>‹</button>`;
@@ -1372,7 +1395,7 @@ Regles:
     }
     navHtml += `</div>`;
 
-    const txs = state.transactions.filter(t => (isAll || effectiveMonth(t)===state.dashMonth) && !t.neutral);
+    const txs = state.transactions.filter(t => (isAll ? effectiveMonth(t).slice(0,4)===state.dashYear : effectiveMonth(t)===state.dashMonth) && !t.neutral);
     let income=0, expense=0;
     const byCat = {};
     const catSurplus = {};
@@ -1423,28 +1446,38 @@ Regles:
 
     let realBalanceHtml = "";
     let savingsHtml = "";
+    let monthSavings = 0;
     let placementTxForClick = [];
     {
-      const year = isAll ? null : state.dashMonth.slice(0,4);
-      const placementTx = state.transactions.filter(t=> t.category==="Placement" && !t.neutral && (isAll || t.date.slice(0,4)===year));
+      const year = isAll ? state.dashYear : state.dashMonth.slice(0,4);
+      const placementTx = state.transactions.filter(t=> t.category==="Placement" && !t.neutral && t.date.slice(0,4)===year);
       placementTxForClick = placementTx;
       const yearSavings = placementTx.reduce((s,t)=>s-t.amount,0);
-      const yearLabel = isAll ? "" : ` <span style="font-size:10px; font-weight:400;">(année ${year})</span>`;
-      savingsHtml = `<div class="kpi" id="savingsKpi" style="border-color:var(--mint); cursor:pointer;"><div class="label">Économie${yearLabel} <span style="font-size:10px; font-weight:400;">(clique pour le détail)</span></div><div class="value" style="color:var(--mint-text);">${fmt(yearSavings)}</div></div>`;
+      const yearLabel = ` <span style="font-size:10px; font-weight:400;">(année ${year})</span>`;
+      let monthLine = "";
+      if(!isAll){
+        monthSavings = txs.filter(t=>t.category==="Placement").reduce((s,t)=>s-t.amount,0);
+        monthLine = `<div style="font-size:11px; color:var(--ink-soft); margin-top:3px;">dont ${fmt(monthSavings)} ce mois-ci</div>`;
+      }
+      savingsHtml = `<div class="kpi" id="savingsKpi" style="border-color:var(--mint); cursor:pointer;"><div class="label">Économie${yearLabel} <span style="font-size:10px; font-weight:400;">(clique pour le détail)</span></div><div class="value" style="color:var(--mint-text);">${fmt(yearSavings)}</div>${monthLine}</div>`;
     }
     if(state.openingBalance && state.openingBalance.date){
       const ob = state.openingBalance;
       const relevant = state.transactions.filter(t=>{
         if(t.neutral || t.date<=ob.date) return false;
-        if(isAll) return true;
+        if(isAll) return t.date.slice(0,4) <= state.dashYear;
         return t.date.slice(0,7) <= state.dashMonth;
       });
       const since = relevant.reduce((s,t)=>s+t.amount,0);
       const real = ob.amount + since;
       const todayMonth = new Date().toISOString().slice(0,7);
+      const todayYear = new Date().getFullYear().toString();
       const isCurrentMonth = !isAll && state.dashMonth === todayMonth;
-      const qualifier = isAll ? "" : (isCurrentMonth ? " · projeté" : " · réel");
-      const asOf = isAll ? "" : ` <span style="font-size:10px; font-weight:400;">(fin ${monthLabel(state.dashMonth+"-01")}${qualifier})</span>`;
+      const isCurrentYear = isAll && state.dashYear === todayYear;
+      const qualifier = (isCurrentMonth || isCurrentYear) ? " · projeté" : " · réel";
+      const asOf = isAll
+        ? ` <span style="font-size:10px; font-weight:400;">(fin année ${state.dashYear}${qualifier})</span>`
+        : ` <span style="font-size:10px; font-weight:400;">(fin ${monthLabel(state.dashMonth+"-01")}${qualifier})</span>`;
       realBalanceHtml = `<div class="kpi balance"><div class="label">Solde réel estimé${asOf}</div><div class="value">${fmt(real)}</div></div>`;
     }
 
@@ -1471,6 +1504,54 @@ Regles:
         </div>`;
     });
     html += `</div></div></div>`;
+
+    if(!isAll){
+      const charges = Object.entries(byCat).reduce((s,[cat,val])=> FIXED_CHARGE_CATEGORIES.has(cat) ? s+val : s, 0);
+      const depensesVar = Math.max(0, expense - charges);
+      const econ = Math.max(0, monthSavings);
+      const denom = income>0 ? income : (charges+depensesVar+econ || 1);
+      const parts = [
+        { label: "Charges fixes", val: charges, color: "#B7D9EC" },
+        { label: "Dépenses variables", val: depensesVar, color: "#F5C2A8" },
+        { label: "Économie", val: econ, color: "#A9D9C5" }
+      ];
+      const partsTotal = parts.reduce((s,p)=>s+p.val,0);
+      let startAngle = -90;
+      const cx=100, cy=100, r=92;
+      let paths = "";
+      if(partsTotal>0){
+        parts.forEach(p=>{
+          if(p.val<=0) return;
+          const angle = (p.val/partsTotal)*360;
+          const endAngle = startAngle+angle;
+          const large = angle>180 ? 1 : 0;
+          const x1 = cx + r*Math.cos(startAngle*Math.PI/180), y1 = cy + r*Math.sin(startAngle*Math.PI/180);
+          const x2 = cx + r*Math.cos(endAngle*Math.PI/180), y2 = cy + r*Math.sin(endAngle*Math.PI/180);
+          paths += `<path d="M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${large} 1 ${x2.toFixed(2)},${y2.toFixed(2)} Z" fill="${p.color}" stroke="#FFFCF6" stroke-width="2"></path>`;
+          startAngle = endAngle;
+        });
+      }
+      const pieSvg3 = partsTotal>0
+        ? `<svg viewBox="0 0 200 200" width="200" height="200">${paths}</svg>`
+        : `<svg viewBox="0 0 200 200" width="200" height="200"><circle cx="${cx}" cy="${cy}" r="${r}" fill="#EDE7DC"></circle></svg>`;
+      const legendHtml = parts.map(p=>{
+        const pct = denom>0 ? Math.round((p.val/denom)*100) : 0;
+        return `
+        <div class="bar-row" style="grid-template-columns:150px 1fr 100px;">
+          <div class="cat-name"><span class="cat-dot" style="background:${p.color};"></span>${p.label}</div>
+          <div class="bar-track"><div class="bar-fill" style="width:${Math.max(4,pct)}%; background:${p.color};"></div></div>
+          <div class="cat-amount">${fmt(p.val)} <span style="color:var(--ink-soft); font-weight:400;">(${pct}%)</span></div>
+        </div>`;
+      }).join("");
+      html += `
+      <h2 class="panel-title" style="font-size:15.5px; margin-top:34px; margin-bottom:6px;">Répartition du mois</h2>
+      <p class="panel-hint" style="margin-bottom:14px;">Charges fixes, dépenses variables et économie — en % des recettes du mois.</p>
+      <div class="dash-chart-row">
+        <div class="pie-wrap">${pieSvg3}</div>
+        <div class="dash-bars"><div class="bar-list">${legendHtml}</div></div>
+      </div>`;
+    }
+
     container.innerHTML = html;
     bindDashboardNav(months);
     const incomeKpi = document.getElementById("incomeKpi");
@@ -1484,6 +1565,8 @@ Regles:
   function bindDashboardNav(months){
     const prevBtn = document.getElementById("prevMonthBtn");
     const nextBtn = document.getElementById("nextMonthBtn");
+    const prevYearBtn = document.getElementById("prevYearBtn");
+    const nextYearBtn = document.getElementById("nextYearBtn");
     const toggleBtn = document.getElementById("toggleAllBtn");
     if(prevBtn) prevBtn.addEventListener("click", ()=>{
       const idx = months.indexOf(state.dashMonth);
@@ -1493,8 +1576,22 @@ Regles:
       const idx = months.indexOf(state.dashMonth);
       if(idx<months.length-1){ state.dashMonth = months[idx+1]; renderDashboardContent(months); }
     });
+    const years = Array.from(new Set(months.map(m=>m.slice(0,4)))).sort();
+    if(prevYearBtn) prevYearBtn.addEventListener("click", ()=>{
+      const yIdx = years.indexOf(state.dashYear);
+      if(yIdx>0){ state.dashYear = years[yIdx-1]; renderDashboardContent(months); }
+    });
+    if(nextYearBtn) nextYearBtn.addEventListener("click", ()=>{
+      const yIdx = years.indexOf(state.dashYear);
+      if(yIdx<years.length-1){ state.dashYear = years[yIdx+1]; renderDashboardContent(months); }
+    });
     if(toggleBtn) toggleBtn.addEventListener("click", ()=>{
-      state.dashMonth = (state.dashMonth==="all") ? months[months.length-1] : "all";
+      if(state.dashMonth==="all"){
+        state.dashMonth = months[months.length-1];
+      } else {
+        state.dashYear = state.dashMonth.slice(0,4);
+        state.dashMonth = "all";
+      }
       renderDashboardContent(months);
     });
   }
